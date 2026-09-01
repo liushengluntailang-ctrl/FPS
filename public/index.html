@@ -2,65 +2,96 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>CYBER STRIKE 3D</title>
+  <title>CYBER STRIKE 3D - ULTIMATE</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; user-select: none; }
-    #crosshair {
-      position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
-      transform: translate(-50%, -50%); pointer-events: none;
-    }
-    #crosshair::before, #crosshair::after {
-      content: ''; position: absolute; background: #00ffcc;
-    }
-    #crosshair::before { top: 4px; left: -8px; width: 26px; height: 2px; }
-    #crosshair::after { top: -8px; left: 4px; width: 2px; height: 26px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
 
-    /* スナイパースコープUI */
+    /* 通常クロスヘア */
+    #crosshair {
+      position: absolute; top: 50%; left: 50%; width: 14px; height: 14px;
+      transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
+    }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #00ffcc; }
+    #crosshair::before { top: 6px; left: -10px; width: 34px; height: 2px; }
+    #crosshair::after { top: -10px; left: 6px; width: 2px; height: 34px; }
+
+    /* スナイパースコープ画面（完全版） */
     #sniper-scope {
-      display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-      border-radius: 50%; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.95);
-      border: 2px solid #ff0055; pointer-events: none;
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 20;
+    }
+    .scope-circle {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: min(75vh, 75vw); height: min(75vh, 75vw);
+      border-radius: 50%; border: 3px solid #ff0055;
+      box-shadow: 0 0 0 2000px rgba(5, 5, 10, 0.96);
+    }
+    .scope-line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(255,0,85,0.7); }
+    .scope-line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; background: rgba(255,0,85,0.7); }
+    .scope-dot { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #ff0055; transform: translate(-50%, -50%); border-radius: 50%; }
+
+    /* ヒットマーカー */
+    #hit-marker {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #ff0055; font-size: 32px; font-weight: bold; display: none; pointer-events: none; z-index: 15;
     }
 
     /* HUD */
-    #hud { position: absolute; bottom: 20px; left: 20px; color: #fff; font-size: 20px; pointer-events: none; }
-    #weapon-hud { position: absolute; bottom: 20px; right: 20px; color: #00ffcc; font-size: 22px; font-weight: bold; pointer-events: none; text-align: right; }
-    #kill-log { position: absolute; top: 20px; right: 20px; color: #ffeb3b; font-size: 14px; pointer-events: none; }
-    #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0055; font-size: 28px; font-weight: bold; display: none; pointer-events: none; }
+    #hud { position: absolute; bottom: 25px; left: 25px; color: #fff; font-size: 22px; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; z-index: 10; }
+    #weapon-hud { position: absolute; bottom: 25px; right: 25px; color: #00ffcc; font-size: 24px; font-weight: bold; pointer-events: none; text-align: right; text-shadow: 2px 2px 4px #000; z-index: 10; }
+    #kill-log { position: absolute; top: 20px; right: 20px; color: #ffeb3b; font-size: 15px; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 3px #000; z-index: 10; }
 
     /* スタート画面 */
-    #blocker { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; }
-    input { padding: 10px; font-size: 18px; border-radius: 5px; border: 2px solid #00ffcc; background: #111; color: #fff; margin-bottom: 10px; text-align: center; }
-    button { padding: 12px 30px; font-size: 18px; font-weight: bold; background: #00ffcc; border: none; border-radius: 5px; cursor: pointer; }
+    #blocker {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 15, 25, 0.9); display: flex; flex-direction: column;
+      justify-content: center; align-items: center; color: #fff; z-index: 100;
+    }
+    input {
+      padding: 12px 20px; font-size: 20px; border-radius: 8px; border: 2px solid #00ffcc;
+      background: #111; color: #fff; margin-bottom: 15px; text-align: center; outline: none;
+    }
+    button {
+      padding: 14px 40px; font-size: 20px; font-weight: bold; background: #00ffcc;
+      border: none; border-radius: 8px; cursor: pointer; color: #000; transition: transform 0.1s;
+    }
+    button:hover { transform: scale(1.05); background: #33ffd6; }
   </style>
   <script src="/socket.io/socket.io.js"></script>
-  <!-- Three.js & Controls -->
+  <!-- Three.js & PointerLockControls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 </head>
 <body>
 
 <div id="crosshair"></div>
-<div id="sniper-scope"></div>
+<div id="sniper-scope">
+  <div class="scope-circle">
+    <div class="scope-line-h"></div>
+    <div class="scope-line-v"></div>
+    <div class="scope-dot"></div>
+  </div>
+</div>
 <div id="hit-marker">✕</div>
 
 <div id="hud">
   <div>❤️ HP: <span id="hp-val">100</span></div>
-  <div>🏆 KILLS: <span id="kills-val">0</span></div>
+  <div style="font-size: 16px; color: #aaa; margin-top: 5px;">黄色い床: ジャンプパッド</div>
 </div>
 
 <div id="weapon-hud">
   <div id="cur-weapon">1: ASSAULT RIFLE</div>
-  <div style="font-size: 13px; color: #aaa;">[1-5] 切替 / 右クリック: ADS</div>
+  <div style="font-size: 14px; color: #aaa; margin-top: 5px;">[1-5] 武器切替 / 右クリック: 狙撃スコープ</div>
 </div>
 
 <div id="kill-log"></div>
 
 <div id="blocker">
-  <h1 style="color: #00ffcc; letter-spacing: 4px;">⚔️ CYBER STRIKE 3D</h1>
-  <p>WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | 1~5: 武器切替</p>
-  <input type="text" id="name-input" placeholder="名前を入力..." maxlength="10">
-  <button id="start-btn">参戦する (クリック)</button>
+  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 42px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D</h1>
+  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | 1~5: 武器切替</p>
+  <input type="text" id="name-input" placeholder="プレイヤー名を入力..." maxlength="10">
+  <button id="start-btn">ゲームスタート (クリック)</button>
 </div>
 
 <script>
@@ -68,11 +99,11 @@
 
   // ================= 武器データ =================
   const WEAPONS = {
-    1: { name: 'ASSAULT RIFLE', damage: 25, delay: 130, range: 100, auto: true, count: 1, spread: 0.02 },
-    2: { name: 'SHOTGUN', damage: 16, delay: 750, range: 40, auto: false, count: 6, spread: 0.08 },
-    3: { name: 'SNIPER RIFLE', damage: 100, delay: 1100, range: 250, auto: false, count: 1, spread: 0.001, scope: true },
-    4: { name: 'SMG', damage: 15, delay: 75, range: 60, auto: true, count: 1, spread: 0.045 },
-    5: { name: 'KATANA', damage: 95, delay: 400, range: 4.5, auto: false, count: 1, spread: 0, melee: true }
+    1: { name: 'ASSAULT RIFLE', damage: 24, delay: 120, range: 120, auto: true, count: 1, spread: 0.015 },
+    2: { name: 'SHOTGUN', damage: 16, delay: 750, range: 30, auto: false, count: 8, spread: 0.08 },
+    3: { name: 'SNIPER RIFLE', damage: 110, delay: 1100, range: 300, auto: false, count: 1, spread: 0.0001, scope: true },
+    4: { name: 'SMG', damage: 14, delay: 70, range: 50, auto: true, count: 1, spread: 0.04 },
+    5: { name: 'KATANA', damage: 95, delay: 350, range: 2.8, auto: false, count: 1, spread: 0, melee: true } // 射程2.8m
   };
 
   let currentWeaponIndex = 1;
@@ -81,10 +112,10 @@
   let isShooting = false;
   let myId = null;
 
-  // ================= Three.js 基本設定 =================
+  // ================= Three.js 基本設定 (青空・明るい照明) =================
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0c14);
-  scene.fog = new THREE.Fog(0x0a0c14, 20, 120);
+  scene.background = new THREE.Color(0x70b5ff);
+  scene.fog = new THREE.Fog(0x70b5ff, 40, 220);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -93,45 +124,74 @@
   document.body.appendChild(renderer.domElement);
 
   // ライティング
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
   scene.add(ambientLight);
-  const dirLight = new THREE.DirectionalLight(0x00ffff, 0.8);
-  dirLight.position.set(20, 40, 20);
-  scene.add(dirLight);
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.85);
+  sunLight.position.set(50, 100, 50);
+  scene.add(sunLight);
 
-  // ================= 立体マップの構築 =================
-  const obstacles = [];
+  // ================= 立体マップ ＆ コリジョン構築 =================
+  const colliders = []; // 衝突判定用 AABB
+  const jumpPads = [];
 
-  // 床
-  const floorGeo = new THREE.PlaneGeometry(100, 100);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, roughness: 0.8 });
+  // 床 (120x120)
+  const floorGeo = new THREE.PlaneGeometry(140, 140);
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x8a9ba8, roughness: 0.8 });
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
 
-  // オブジェクト生成ヘルパー
-  function createBox(x, y, z, w, h, d, color = 0x2e3440) {
+  // 箱・足場を生成し、当たり判定（Box3）を登録する関数
+  function addObstacle(x, y, z, w, h, d, color = 0x2c3e50) {
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({ color })
+      new THREE.MeshStandardMaterial({ color, roughness: 0.6 })
     );
     mesh.position.set(x, y + h / 2, z);
     scene.add(mesh);
-    obstacles.push(mesh);
+
+    // 衝突判定用バウンディングボックス
+    const box = new THREE.Box3().setFromObject(mesh);
+    colliders.push(box);
     return mesh;
   }
 
-  // 中央の高台タワー（スナイパー用）
-  createBox(0, 0, 0, 12, 6, 12, 0x3b4252);
-  // スロープ代わりの段差
-  createBox(0, 0, 9, 6, 3, 6, 0x434c5e);
-  createBox(0, 0, -9, 6, 3, 6, 0x434c5e);
+  // ジャンプパッド（踏むと大ジャンプ）
+  function addJumpPad(x, y, z) {
+    const pad = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 0.4, 4),
+      new THREE.MeshStandardMaterial({ color: 0xf1c40f, emissive: 0xf39c12, emissiveIntensity: 0.6 })
+    );
+    pad.position.set(x, y + 0.2, z);
+    scene.add(pad);
+    jumpPads.push({ x, z, y: y + 0.2, size: 2.2 });
+  }
 
-  // 遮蔽物コンテナ・柱（立体的な駆け引き用）
-  createBox(15, 0, 15, 4, 4, 8, 0x5e81ac);
-  createBox(-15, 0, -15, 8, 4, 4, 0x5e81ac);
-  createBox(-18, 0, 12, 4, 7, 4, 0x88c0d0);
-  createBox(18, 0, -12, 4, 7, 4, 0x88c0d0);
+  // --- マップ構築 ---
+  // 1. 中央スナイパータワー (高さ12m)
+  addObstacle(0, 0, 0, 14, 10, 14, 0x34495e);
+  addObstacle(0, 10, 0, 10, 1, 10, 0x1abc9c); // 最上階フロア
+  addJumpPad(0, 0, 10); // タワー直行ジャンプ台
+  addJumpPad(0, 0, -10);
+
+  // 2. 東西南北の狙撃高台タワー
+  addObstacle(30, 0, 30, 8, 8, 8, 0x9b59b6);
+  addJumpPad(30, 0, 22);
+
+  addObstacle(-30, 0, -30, 8, 8, 8, 0x3498db);
+  addJumpPad(-30, 0, -22);
+
+  // 3. 遮蔽物・コンテナ（立体的な隠れ場所）
+  addObstacle(15, 0, -15, 5, 4, 10, 0xe74c3c);
+  addObstacle(-15, 0, 15, 10, 4, 5, 0xe67e22);
+  addObstacle(25, 0, -25, 6, 6, 6, 0x2ecc71);
+  addObstacle(-25, 0, 25, 6, 6, 6, 0x95a5a6);
+
+  // 外壁（マップ外落下防止）
+  addObstacle(0, 0, 70, 140, 8, 2, 0x2c3e50);
+  addObstacle(0, 0, -70, 140, 8, 2, 0x2c3e50);
+  addObstacle(70, 0, 0, 2, 8, 140, 0x2c3e50);
+  addObstacle(-70, 0, 0, 2, 8, 140, 0x2c3e50);
 
   // ================= FPS操作・移動 =================
   const controls = new THREE.PointerLockControls(camera, document.body);
@@ -144,24 +204,26 @@
   });
 
   controls.addEventListener('lock', () => blocker.style.display = 'none');
-  controls.addEventListener('unlock', () => blocker.style.display = 'flex');
+  controls.addEventListener('unlock', () => {
+    blocker.style.display = 'flex';
+    toggleADS(false);
+  });
 
-  const move = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false };
-  let velocity = new THREE.Vector3();
-  let direction = new THREE.Vector3();
-  let canJump = false;
+  const move = { forward: false, backward: false, left: false, right: false, sprint: false };
+  let velocityY = 0;
+  let canJump = true;
 
   window.addEventListener('keydown', (e) => {
     if (['1','2','3','4','5'].includes(e.key)) {
       currentWeaponIndex = parseInt(e.key);
       document.getElementById('cur-weapon').innerText = `${currentWeaponIndex}: ${WEAPONS[currentWeaponIndex].name}`;
-      if (isAiming) toggleADS(false);
+      toggleADS(false);
     }
     if (e.code === 'KeyW') move.forward = true;
     if (e.code === 'KeyS') move.backward = true;
     if (e.code === 'KeyA') move.left = true;
     if (e.code === 'KeyD') move.right = true;
-    if (e.code === 'Space' && canJump) { velocity.y += 12; canJump = false; }
+    if (e.code === 'Space' && canJump) { velocityY = 13; canJump = false; }
     if (e.code === 'ShiftLeft') move.sprint = true;
   });
 
@@ -173,7 +235,7 @@
     if (e.code === 'ShiftLeft') move.sprint = false;
   });
 
-  // 射撃とADS（右クリック）
+  // 射撃とスコープ（右クリック）
   window.addEventListener('mousedown', (e) => {
     if (!controls.isLocked) return;
     if (e.button === 0) { isShooting = true; shoot(); }
@@ -189,34 +251,39 @@
   function toggleADS(aim) {
     isAiming = aim;
     const w = WEAPONS[currentWeaponIndex];
-    if (w.scope) {
-      document.getElementById('sniper-scope').style.display = aim ? 'block' : 'none';
-      camera.fov = aim ? 20 : 75; // スナイパー大ズーム
+    const scopeEl = document.getElementById('sniper-scope');
+    const crosshairEl = document.getElementById('crosshair');
+
+    if (aim && w.scope) {
+      scopeEl.style.display = 'block';
+      crosshairEl.style.display = 'none';
+      camera.fov = 14; // スナイパー超強烈ズーム！
     } else {
-      camera.fov = aim ? 50 : 75; // 通常ADS
+      scopeEl.style.display = 'none';
+      crosshairEl.style.display = 'block';
+      camera.fov = aim ? 50 : 75;
     }
     camera.updateProjectionMatrix();
   }
 
-  // ================= プレイヤーモデル管理 =================
+  // ================= プレイヤー表示と当たり判定 =================
   const otherPlayers = {};
-  const hitTargets = []; // Raycast判定対象
+  const hitTargets = [];
 
   function createPlayerMesh(p) {
     const group = new THREE.Group();
     // 胴体
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, 0.5), new THREE.MeshStandardMaterial({ color: p.color }));
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 0.6), new THREE.MeshStandardMaterial({ color: p.color }));
     body.position.y = 0.9;
     group.add(body);
     // 頭
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    head.position.y = 1.85;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    head.position.y = 1.9;
     group.add(head);
 
     group.position.set(p.x, p.y, p.z);
     scene.add(group);
 
-    // 当たり判定用にuserData付与
     body.userData = { playerId: p.id };
     head.userData = { playerId: p.id, isHeadshot: true };
     hitTargets.push(body, head);
@@ -224,7 +291,7 @@
     return group;
   }
 
-  // ================= 射撃 / 刀 攻撃システム =================
+  // ================= 射撃 / 刀 攻撃判定 =================
   const raycaster = new THREE.Raycaster();
 
   function shoot() {
@@ -233,44 +300,46 @@
     if (now - lastShotTime < w.delay) return;
     lastShotTime = now;
 
-    // 刀（近接）の演出
+    // 刀（近接）のカメラ振り演出
     if (w.melee) {
-      camera.rotation.z += 0.1;
-      setTimeout(() => camera.rotation.z -= 0.1, 80);
+      camera.rotation.z += 0.15;
+      setTimeout(() => camera.rotation.z -= 0.15, 90);
     }
 
-    // 弾数分（散弾なら複数）レイを飛ばす
     for (let i = 0; i < w.count; i++) {
-      const spreadX = (Math.random() - 0.5) * (isAiming ? w.spread * 0.3 : w.spread);
-      const spreadY = (Math.random() - 0.5) * (isAiming ? w.spread * 0.3 : w.spread);
+      const spreadX = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
+      const spreadY = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
 
       raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
-      raycaster.far = w.range;
+      raycaster.far = w.range; // 刀は2.8m、スナイパーは300m
 
       const intersects = raycaster.intersectObjects(hitTargets);
       if (intersects.length > 0) {
-        const hitObj = intersects[0].object;
-        const targetId = hitObj.userData.playerId;
-        const damage = hitObj.userData.isHeadshot ? w.damage * 1.5 : w.damage;
+        const hit = intersects[0];
+        // 刀の場合は距離2.8m以内であることを厳格チェック
+        if (!w.melee || hit.distance <= w.range) {
+          const hitObj = hit.object;
+          const targetId = hitObj.userData.playerId;
+          const damage = hitObj.userData.isHeadshot ? w.damage * 1.5 : w.damage;
 
-        socket.emit('hit', { targetId, damage, weapon: w.name });
+          socket.emit('hit', { targetId, damage: Math.round(damage), weapon: w.name });
+        }
       }
     }
 
-    // フルオート連射
     if (w.auto && isShooting) {
       setTimeout(shoot, w.delay);
     }
   }
 
-  // ヒットマーカー
+  // ヒット通知
   socket.on('hitSuccess', () => {
     const hm = document.getElementById('hit-marker');
     hm.style.display = 'block';
-    setTimeout(() => hm.style.display = 'none', 100);
+    setTimeout(() => hm.style.display = 'none', 120);
   });
 
-  // ================= ソケット通信 =================
+  // ================= ソケット通信同期 =================
   socket.on('init', (data) => {
     myId = data.id;
     for (const id in data.players) {
@@ -278,9 +347,7 @@
     }
   });
 
-  socket.on('playerJoined', (p) => {
-    otherPlayers[p.id] = createPlayerMesh(p);
-  });
+  socket.on('playerJoined', (p) => { otherPlayers[p.id] = createPlayerMesh(p); });
 
   socket.on('playerMoved', (p) => {
     if (otherPlayers[p.id]) {
@@ -311,47 +378,89 @@
   socket.on('playerRespawn', (p) => {
     if (p.id === myId) {
       camera.position.set(p.x, p.y + 1.6, p.z);
+      velocityY = 0;
       document.getElementById('hp-val').innerText = '100';
     } else if (otherPlayers[p.id]) {
       otherPlayers[p.id].position.set(p.x, p.y, p.z);
     }
   });
 
-  // ================= メインループ =================
+  // ================= 衝突判定付き物理・移動ループ =================
   let prevTime = performance.now();
 
   function animate() {
     requestAnimationFrame(animate);
 
     const time = performance.now();
-    const delta = (time - prevTime) / 1000;
+    const delta = Math.min((time - prevTime) / 1000, 0.1);
+    prevTime = time;
 
     if (controls.isLocked) {
-      // 速度減速
-      velocity.x -= velocity.x * 10.0 * delta;
-      velocity.z -= velocity.z * 10.0 * delta;
-      velocity.y -= 30.0 * delta; // 重力
+      // 1. 水平移動の計算
+      const speed = (move.sprint ? 16 : 9) * delta;
+      const prevX = camera.position.x;
+      const prevZ = camera.position.z;
 
-      direction.z = Number(move.forward) - Number(move.backward);
-      direction.x = Number(move.right) - Number(move.left);
-      direction.normalize();
+      if (move.forward) controls.moveForward(speed);
+      if (move.backward) controls.moveForward(-speed);
+      if (move.left) controls.moveRight(-speed);
+      if (move.right) controls.moveRight(speed);
 
-      const speed = move.sprint ? 70.0 : 40.0;
-      if (move.forward || move.backward) velocity.z -= direction.z * speed * delta;
-      if (move.left || move.right) velocity.x -= direction.x * speed * delta;
+      // 2. 水平方向の壁コリジョン（すり抜け防止）
+      const playerRadius = 0.5;
+      const playerFeetY = camera.position.y - 1.6;
 
-      controls.moveRight(-velocity.x * delta);
-      controls.moveForward(-velocity.z * delta);
-      camera.position.y += velocity.y * delta;
+      for (const box of colliders) {
+        // プレイヤーの高さと重なっているか
+        if (playerFeetY < box.max.y && playerFeetY + 1.8 > box.min.y) {
+          if (
+            camera.position.x + playerRadius > box.min.x &&
+            camera.position.x - playerRadius < box.max.x &&
+            camera.position.z + playerRadius > box.min.z &&
+            camera.position.z - playerRadius < box.max.z
+          ) {
+            // 壁にぶつかったら元の位置に戻す
+            camera.position.x = prevX;
+            camera.position.z = prevZ;
+            break;
+          }
+        }
+      }
 
-      // 床・高台の簡易着地判定
-      if (camera.position.y < 1.6) {
-        velocity.y = 0;
-        camera.position.y = 1.6;
+      // 3. 垂直方向（重力・足場・ジャンプ台）
+      velocityY -= 28.0 * delta; // 重力
+      camera.position.y += velocityY * delta;
+
+      // ジャンプパッド判定
+      for (const pad of jumpPads) {
+        if (Math.abs(camera.position.x - pad.x) < pad.size && Math.abs(camera.position.z - pad.z) < pad.size) {
+          if (camera.position.y - 1.6 <= pad.y + 0.5 && camera.position.y - 1.6 >= pad.y - 0.5) {
+            velocityY = 24.0; // 大ジャンプ発動！
+            canJump = false;
+          }
+        }
+      }
+
+      // 足場（箱の上・床）の着地判定
+      let groundY = 0; // 最低床
+      const pX = camera.position.x;
+      const pZ = camera.position.z;
+
+      for (const box of colliders) {
+        if (pX >= box.min.x - 0.3 && pX <= box.max.x + 0.3 && pZ >= box.min.z - 0.3 && pZ <= box.max.z + 0.3) {
+          if (box.max.y <= camera.position.y - 1.5 && box.max.y > groundY) {
+            groundY = box.max.y;
+          }
+        }
+      }
+
+      if (camera.position.y - 1.6 <= groundY) {
+        camera.position.y = groundY + 1.6;
+        velocityY = 0;
         canJump = true;
       }
 
-      // サーバーへ位置送信
+      // 4. サーバーへ位置同期
       socket.emit('playerMove', {
         x: camera.position.x,
         y: camera.position.y - 1.6,
@@ -360,7 +469,6 @@
       });
     }
 
-    prevTime = time;
     renderer.render(scene, camera);
   }
 
