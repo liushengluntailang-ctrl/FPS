@@ -2,19 +2,21 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>CYBER STRIKE 3D</title>
+  <title>CYBER STRIKE 3D - DELUXE</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
 
+    /* クロスヘア */
     #crosshair {
       position: absolute; top: 50%; left: 50%; width: 14px; height: 14px;
       transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
     }
-    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #00ffcc; }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #00ffcc; box-shadow: 0 0 4px #00ffcc; }
     #crosshair::before { top: 6px; left: -10px; width: 34px; height: 2px; }
     #crosshair::after { top: -10px; left: 6px; width: 2px; height: 34px; }
 
+    /* スナイパースコープUI */
     #sniper-scope {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       pointer-events: none; z-index: 20;
@@ -29,18 +31,32 @@
     .scope-line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; background: rgba(255,0,85,0.7); }
     .scope-dot { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #ff0055; transform: translate(-50%, -50%); border-radius: 50%; }
 
+    /* ヒットマーカー */
     #hit-marker {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      color: #ff0055; font-size: 32px; font-weight: bold; display: none; pointer-events: none; z-index: 15;
+      color: #ff0055; font-size: 36px; font-weight: bold; display: none; pointer-events: none; z-index: 15;
     }
 
+    /* キル通知バナー */
+    #kill-banner {
+      position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(255, 0, 85, 0.85); color: #fff; padding: 12px 35px;
+      font-size: 26px; font-weight: 900; letter-spacing: 2px; border-radius: 8px;
+      box-shadow: 0 0 20px rgba(255, 0, 85, 0.8); opacity: 0; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none; z-index: 30;
+    }
+    #kill-banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+
+    /* HUD */
     #hud { position: absolute; bottom: 25px; left: 25px; color: #fff; font-size: 22px; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; z-index: 10; }
     #weapon-hud { position: absolute; bottom: 25px; right: 25px; color: #00ffcc; font-size: 24px; font-weight: bold; pointer-events: none; text-align: right; text-shadow: 2px 2px 4px #000; z-index: 10; }
+    #ammo-hud { font-size: 38px; color: #fff; }
     #kill-log { position: absolute; top: 20px; right: 20px; color: #ffeb3b; font-size: 15px; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 3px #000; z-index: 10; }
 
+    /* スタート画面 */
     #blocker {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(10, 15, 25, 0.9); display: flex; flex-direction: column;
+      background: rgba(10, 15, 25, 0.92); display: flex; flex-direction: column;
       justify-content: center; align-items: center; color: #fff; z-index: 100;
     }
     input {
@@ -48,9 +64,10 @@
       background: #111; color: #fff; margin-bottom: 15px; text-align: center; outline: none;
     }
     button {
-      padding: 14px 40px; font-size: 20px; font-weight: bold; background: #00ffcc;
-      border: none; border-radius: 8px; cursor: pointer; color: #000;
+      padding: 14px 40px; font-size: 22px; font-weight: bold; background: #00ffcc;
+      border: none; border-radius: 8px; cursor: pointer; color: #000; transition: transform 0.1s;
     }
+    button:hover { transform: scale(1.05); background: #33ffd6; }
   </style>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -67,6 +84,7 @@
   </div>
 </div>
 <div id="hit-marker">✕</div>
+<div id="kill-banner">🎯 ENEMY ELIMINATED!</div>
 
 <div id="hud">
   <div>❤️ HP: <span id="hp-val">100</span></div>
@@ -75,42 +93,141 @@
 
 <div id="weapon-hud">
   <div id="cur-weapon">1: ASSAULT RIFLE</div>
-  <div style="font-size: 14px; color: #aaa; margin-top: 5px;">[1-5] 武器切替 / 右クリック: 狙撃</div>
+  <div id="ammo-hud"><span id="ammo-cur">30</span> / <span id="ammo-max">30</span></div>
+  <div style="font-size: 13px; color: #aaa;">[1-5] 武器切替 / [R] リロード / 右クリック: 狙撃</div>
 </div>
 
 <div id="kill-log"></div>
 
 <div id="blocker">
-  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 42px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D</h1>
-  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | 1~5: 武器</p>
+  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D</h1>
+  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | R: リロード | 1~5: 武器</p>
   <input type="text" id="name-input" placeholder="プレイヤー名を入力..." maxlength="10">
-  <button id="start-btn">参戦する (クリック)</button>
+  <button id="start-btn">ゲームスタート (クリック)</button>
 </div>
 
 <script>
   const socket = io();
 
+  // ================= 🔊 超リアル Web Audio 音声エンジン =================
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+
+    if (type === 'ar' || type === 'smg') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.08);
+    } else if (type === 'sg') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.exponentialRampToValueAtTime(20, now + 0.2);
+      gain.gain.setValueAtTime(0.6, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'sr') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(280, now);
+      osc.frequency.exponentialRampToValueAtTime(20, now + 0.35);
+      gain.gain.setValueAtTime(0.8, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.35);
+    } else if (type === 'katana') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.12);
+    } else if (type === 'hit') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, now);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.05);
+    } else if (type === 'kill') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880, now + 0.08); // A5
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.4);
+    } else if (type === 'jump') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.25);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.25);
+    }
+  }
+
+  // ================= 武器データ ＆ 弾薬システム =================
   const WEAPONS = {
-    1: { name: 'ASSAULT RIFLE', damage: 24, delay: 120, range: 120, auto: true, count: 1, spread: 0.015 },
-    2: { name: 'SHOTGUN', damage: 16, delay: 750, range: 30, auto: false, count: 8, spread: 0.08 },
-    3: { name: 'SNIPER RIFLE', damage: 110, delay: 1100, range: 300, auto: false, count: 1, spread: 0.0001, scope: true },
-    4: { name: 'SMG', damage: 14, delay: 70, range: 50, auto: true, count: 1, spread: 0.04 },
-    5: { name: 'KATANA', damage: 95, delay: 350, range: 2.8, auto: false, count: 1, spread: 0, melee: true }
+    1: { name: 'ASSAULT RIFLE', sound: 'ar', damage: 24, delay: 120, range: 120, auto: true, count: 1, spread: 0.015, maxAmmo: 30, curAmmo: 30, reloadTime: 1200 },
+    2: { name: 'SHOTGUN', sound: 'sg', damage: 16, delay: 750, range: 30, auto: false, count: 8, spread: 0.08, maxAmmo: 6, curAmmo: 6, reloadTime: 1800 },
+    3: { name: 'SNIPER RIFLE', sound: 'sr', damage: 110, delay: 1100, range: 300, auto: false, count: 1, spread: 0.0001, scope: true, maxAmmo: 5, curAmmo: 5, reloadTime: 2000 },
+    4: { name: 'SMG', sound: 'smg', damage: 14, delay: 70, range: 50, auto: true, count: 1, spread: 0.04, maxAmmo: 40, curAmmo: 40, reloadTime: 1000 },
+    5: { name: 'KATANA', sound: 'katana', damage: 95, delay: 350, range: 2.8, auto: false, count: 1, spread: 0, melee: true, maxAmmo: '∞', curAmmo: '∞' }
   };
 
   let currentWeaponIndex = 1;
   let lastShotTime = 0;
   let isAiming = false;
   let isShooting = false;
+  let isReloading = false;
   let myId = null;
 
-  // ================= Three.js 基本設定 =================
+  function updateAmmoUI() {
+    const w = WEAPONS[currentWeaponIndex];
+    document.getElementById('ammo-cur').innerText = isReloading ? 'RELOADING...' : w.curAmmo;
+    document.getElementById('ammo-max').innerText = w.maxAmmo;
+  }
+
+  function reload() {
+    const w = WEAPONS[currentWeaponIndex];
+    if (w.melee || isReloading || w.curAmmo === w.maxAmmo) return;
+    isReloading = true;
+    updateAmmoUI();
+    setTimeout(() => {
+      w.curAmmo = w.maxAmmo;
+      isReloading = false;
+      updateAmmoUI();
+    }, w.reloadTime);
+  }
+
+  // ================= Three.js ＆ レンダラー設定 =================
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x70b5ff);
   scene.fog = new THREE.Fog(0x70b5ff, 40, 220);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  // 初期位置を安全な外側に配置 (タワーの外)
   camera.position.set(0, 1.6, 25);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -124,26 +241,51 @@
   sunLight.position.set(50, 100, 50);
   scene.add(sunLight);
 
+  // ================= 🗡️ 手持ち武器の3Dモデル（Viewmodel） =================
+  const weaponHolder = new THREE.Group();
+  camera.add(weaponHolder);
+  scene.add(camera);
+
+  // 銃モデル
+  const gunMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.16, 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 })
+  );
+  gunMesh.position.set(0.28, -0.22, -0.45);
+  weaponHolder.add(gunMesh);
+
+  // 刀モデル
+  const katanaMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.8, 0.08),
+    new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.1, emissive: 0x00ffff, emissiveIntensity: 0.2 })
+  );
+  katanaMesh.position.set(0.3, -0.15, -0.4);
+  katanaMesh.rotation.set(Math.PI / 4, 0, -Math.PI / 6);
+  katanaMesh.visible = false;
+  weaponHolder.add(katanaMesh);
+
+  function switchWeaponModel() {
+    const isMelee = WEAPONS[currentWeaponIndex].melee;
+    gunMesh.visible = !isMelee && !isAiming;
+    katanaMesh.visible = isMelee;
+  }
+
   // ================= 立体マップ ＆ コリジョン =================
   const colliders = [];
   const jumpPads = [];
 
-  const floorGeo = new THREE.PlaneGeometry(140, 140);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x8a9ba8, roughness: 0.8 });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(140, 140),
+    new THREE.MeshStandardMaterial({ color: 0x8a9ba8, roughness: 0.8 })
+  );
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
 
   function addObstacle(x, y, z, w, h, d, color = 0x2c3e50) {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.6 })
-    );
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }));
     mesh.position.set(x, y + h / 2, z);
     scene.add(mesh);
-
-    const box = new THREE.Box3().setFromObject(mesh);
-    colliders.push(box);
+    colliders.push(new THREE.Box3().setFromObject(mesh));
     return mesh;
   }
 
@@ -159,14 +301,13 @@
 
   // マップ配置
   addObstacle(0, 0, 0, 14, 10, 14, 0x34495e); // 中央タワー
-  addJumpPad(0, 0, 11); // 南ジャンプ台
-  addJumpPad(0, 0, -11); // 北ジャンプ台
-  addJumpPad(11, 0, 0); // 東ジャンプ台
-  addJumpPad(-11, 0, 0); // 西ジャンプ台
+  addJumpPad(0, 0, 11);
+  addJumpPad(0, 0, -11);
+  addJumpPad(11, 0, 0);
+  addJumpPad(-11, 0, 0);
 
   addObstacle(30, 0, 30, 8, 8, 8, 0x9b59b6);
   addJumpPad(30, 0, 22);
-
   addObstacle(-30, 0, -30, 8, 8, 8, 0x3498db);
   addJumpPad(-30, 0, -22);
 
@@ -176,16 +317,15 @@
   // 外壁
   addObstacle(0, 0, 68, 140, 8, 2, 0x2c3e50);
   addObstacle(0, 0, -68, 140, 8, 2, 0x2c3e50);
-  addObstacle(68, 0, 0, 2, 8, 140, 0x2c3e50);
-  addObstacle(-68, 0, 0, 2, 8, 140, 0x2c3e50);
+  addObstacle(70, 0, 0, 2, 8, 140, 0x2c3e50);
+  addObstacle(-70, 0, 0, 2, 8, 140, 0x2c3e50);
 
   // ================= FPS操作 =================
   const controls = new THREE.PointerLockControls(camera, document.body);
   const blocker = document.getElementById('blocker');
 
   document.getElementById('start-btn').addEventListener('click', () => {
-    const name = document.getElementById('name-input').value;
-    socket.emit('join', name);
+    socket.emit('join', document.getElementById('name-input').value);
     controls.lock();
   });
 
@@ -204,7 +344,10 @@
       currentWeaponIndex = parseInt(e.key);
       document.getElementById('cur-weapon').innerText = `${currentWeaponIndex}: ${WEAPONS[currentWeaponIndex].name}`;
       toggleADS(false);
+      switchWeaponModel();
+      updateAmmoUI();
     }
+    if (e.code === 'KeyR') reload();
     const k = e.code;
     if (k === 'KeyW') move.forward = true;
     if (k === 'KeyS') move.backward = true;
@@ -245,10 +388,12 @@
       scopeEl.style.display = 'block';
       crosshairEl.style.display = 'none';
       camera.fov = 14;
+      gunMesh.visible = false;
     } else {
       scopeEl.style.display = 'none';
       crosshairEl.style.display = 'block';
       camera.fov = aim ? 50 : 75;
+      switchWeaponModel();
     }
     camera.updateProjectionMatrix();
   }
@@ -277,18 +422,42 @@
     return group;
   }
 
+  // 弾道トレーサー（光線）の生成
+  function createTracer(start, end) {
+    const material = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+    const line = new THREE.Line(geometry, material);
+    scene.add(line);
+    setTimeout(() => scene.remove(line), 50);
+  }
+
+  // ================= 射撃 / 刀 攻撃システム =================
   const raycaster = new THREE.Raycaster();
 
   function shoot() {
     const now = Date.now();
     const w = WEAPONS[currentWeaponIndex];
-    if (now - lastShotTime < w.delay) return;
-    lastShotTime = now;
+    if (now - lastShotTime < w.delay || isReloading) return;
+    if (!w.melee && w.curAmmo <= 0) { reload(); return; }
 
+    lastShotTime = now;
+    if (!w.melee) { w.curAmmo--; updateAmmoUI(); }
+
+    playSound(w.sound);
+
+    // 刀の斬撃アニメーション
     if (w.melee) {
-      camera.rotation.z += 0.15;
-      setTimeout(() => camera.rotation.z -= 0.15, 90);
+      katanaMesh.rotation.z += 1.2;
+      katanaMesh.position.y += 0.2;
+      setTimeout(() => { katanaMesh.rotation.z -= 1.2; katanaMesh.position.y -= 0.2; }, 100);
+    } else {
+      // 銃のリコイル（跳ね返り）
+      gunMesh.position.z += 0.12;
+      camera.rotation.x += 0.015;
+      setTimeout(() => { gunMesh.position.z -= 0.12; camera.rotation.x -= 0.015; }, 50);
     }
+
+    const startPos = camera.position.clone().add(new THREE.Vector3(0.2, -0.2, -0.5).applyEuler(camera.rotation));
 
     for (let i = 0; i < w.count; i++) {
       const spreadX = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
@@ -298,26 +467,31 @@
       raycaster.far = w.range;
 
       const intersects = raycaster.intersectObjects(hitTargets);
+      let targetPoint = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
+
       if (intersects.length > 0) {
         const hit = intersects[0];
         if (!w.melee || hit.distance <= w.range) {
+          targetPoint = hit.point;
           const hitObj = hit.object;
           const targetId = hitObj.userData.playerId;
           const damage = hitObj.userData.isHeadshot ? w.damage * 1.5 : w.damage;
           socket.emit('hit', { targetId, damage: Math.round(damage), weapon: w.name });
         }
       }
+
+      if (!w.melee) createTracer(startPos, targetPoint);
     }
 
-    if (w.auto && isShooting) {
-      setTimeout(shoot, w.delay);
-    }
+    if (w.auto && isShooting) setTimeout(shoot, w.delay);
   }
 
+  // ヒット通知
   socket.on('hitSuccess', () => {
+    playSound('hit');
     const hm = document.getElementById('hit-marker');
     hm.style.display = 'block';
-    setTimeout(() => hm.style.display = 'none', 120);
+    setTimeout(() => hm.style.display = 'none', 100);
   });
 
   // ================= ソケット通信 =================
@@ -358,6 +532,14 @@
     entry.innerText = `💥 [${data.weapon}] ${data.killer} ➔ ${data.victim}`;
     log.appendChild(entry);
     setTimeout(() => entry.remove(), 4000);
+
+    // 自分がキルしたときの豪華演出！
+    if (data.killer === (document.getElementById('name-input').value || 'Player')) {
+      playSound('kill');
+      const kb = document.getElementById('kill-banner');
+      kb.classList.add('show');
+      setTimeout(() => kb.classList.remove('show'), 1500);
+    }
   });
 
   socket.on('playerRespawn', (p) => {
@@ -365,12 +547,14 @@
       camera.position.set(p.x, p.y + 1.6, p.z);
       velocityY = 0;
       document.getElementById('hp-val').innerText = '100';
+      WEAPONS[currentWeaponIndex].curAmmo = WEAPONS[currentWeaponIndex].maxAmmo;
+      updateAmmoUI();
     } else if (otherPlayers[p.id]) {
       otherPlayers[p.id].position.set(p.x, p.y, p.z);
     }
   });
 
-  // ================= 物理・移動アニメーション =================
+  // ================= 移動 ＆ 物理ループ =================
   let prevTime = performance.now();
 
   function animate() {
@@ -409,7 +593,7 @@
         }
       }
 
-      // 重力とジャンプ
+      // 重力
       velocityY -= 28.0 * delta;
       camera.position.y += velocityY * delta;
 
@@ -417,7 +601,8 @@
       for (const pad of jumpPads) {
         if (Math.abs(camera.position.x - pad.x) < pad.size && Math.abs(camera.position.z - pad.z) < pad.size) {
           if (camera.position.y - 1.6 <= pad.y + 0.8 && camera.position.y - 1.6 >= pad.y - 0.8) {
-            velocityY = 25.0; // 大ジャンプ！
+            velocityY = 25.0;
+            playSound('jump');
             canJump = false;
           }
         }
