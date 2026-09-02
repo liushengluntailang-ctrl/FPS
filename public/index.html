@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>CYBER STRIKE 3D - WARZONE</title>
+  <title>CYBER STRIKE 3D - FIXED</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
@@ -94,7 +94,7 @@
 <div id="kill-log"></div>
 
 <div id="blocker">
-  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D: WARZONE</h1>
+  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D</h1>
   <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | R: リロード | 1~6: 武器切替</p>
   <input type="text" id="name-input" placeholder="プレイヤー名を入力..." maxlength="10">
   <button id="start-btn">戦場へ降下する (クリック)</button>
@@ -261,7 +261,6 @@
   camera.add(weaponHolder);
   scene.add(camera);
 
-  // 銃
   const gunMesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.16, 0.6),
     new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 })
@@ -269,7 +268,6 @@
   gunMesh.position.set(0.28, -0.22, -0.45);
   weaponHolder.add(gunMesh);
 
-  // 刀
   const katanaMesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.04, 0.8, 0.08),
     new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.1, emissive: 0x00ffff, emissiveIntensity: 0.2 })
@@ -279,7 +277,6 @@
   katanaMesh.visible = false;
   weaponHolder.add(katanaMesh);
 
-  // ロケラン
   const rpgMesh = new THREE.Mesh(
     new THREE.CylinderGeometry(0.1, 0.12, 0.9, 16),
     new THREE.MeshStandardMaterial({ color: 0x2e4053, metalness: 0.7, roughness: 0.3 })
@@ -300,7 +297,6 @@
   const boxes = [];
   const jumpPads = [];
 
-  // 広大フロア (240x240)
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(260, 260),
     new THREE.MeshStandardMaterial({ color: 0x7f8c8d, roughness: 0.8 })
@@ -331,20 +327,20 @@
     jumpPads.push({ x, z, y: y + 0.25, size: 3.0 });
   }
 
-  // 1. 中央要塞ピラミッドタワー (高さ18m)
-  addObstacle(0, 0, 0, 36, 6, 36, 0x34495e); // 下段
-  addObstacle(0, 6, 0, 24, 6, 24, 0x2c3e50); // 中段
-  addObstacle(0, 12, 0, 12, 6, 12, 0x1abc9c); // 最上階スナイパー天守閣
+  // 中央要塞タワー
+  addObstacle(0, 0, 0, 36, 6, 36, 0x34495e);
+  addObstacle(0, 6, 0, 24, 6, 24, 0x2c3e50);
+  addObstacle(0, 12, 0, 12, 6, 12, 0x1abc9c);
   addJumpPad(0, 0, 24);
   addJumpPad(0, 0, -24);
   addJumpPad(24, 0, 0);
   addJumpPad(-24, 0, 0);
 
-  // 2. 空中連絡橋（キャットウォーク）
+  // 空中連絡橋
   addObstacle(0, 11, 45, 8, 1, 50, 0x7f8c8d);
   addObstacle(0, 11, -45, 8, 1, 50, 0x7f8c8d);
 
-  // 3. 四方の巨大要塞タワー
+  // 四隅の要塞
   addObstacle(70, 0, 70, 16, 14, 16, 0x8e44ad);
   addJumpPad(70, 0, 56);
   addObstacle(-70, 0, -70, 16, 14, 16, 0x2980b9);
@@ -354,7 +350,7 @@
   addObstacle(-70, 0, 70, 16, 14, 16, 0x27ae60);
   addJumpPad(-70, 0, 56);
 
-  // 4. コンテナ迷路 ＆ 市街地遮蔽物エリア
+  // コンテナ迷路
   const colors = [0xe74c3c, 0x3498db, 0xf39c12, 0x2ecc71, 0x95a5a6];
   for (let i = 0; i < 28; i++) {
     const rx = (Math.random() - 0.5) * 180;
@@ -364,13 +360,13 @@
     }
   }
 
-  // マップ外周の巨大防壁
+  // 外周防壁
   addObstacle(0, 0, 128, 260, 14, 4, 0x1f2c39);
   addObstacle(0, 0, -128, 260, 14, 4, 0x1f2c39);
   addObstacle(128, 0, 0, 4, 14, 260, 0x1f2c39);
   addObstacle(-128, 0, 0, 4, 14, 260, 0x1f2c39);
 
-  // ================= FPS操作 =================
+  // ================= 🛠️ 完璧に修正されたキーボード＆操作管理 =================
   const controls = new THREE.PointerLockControls(camera, document.body);
   const blocker = document.getElementById('blocker');
 
@@ -379,16 +375,24 @@
     controls.lock();
   });
 
+  const move = { forward: false, backward: false, left: false, right: false, sprint: false };
+  let velocityY = 0;
+  let canJump = true;
+
+  function resetKeys() {
+    move.forward = move.backward = move.left = move.right = move.sprint = false;
+    isShooting = false;
+  }
+
   controls.addEventListener('lock', () => blocker.style.display = 'none');
   controls.addEventListener('unlock', () => {
     blocker.style.display = 'flex';
     toggleADS(false);
-    move.forward = move.backward = move.left = move.right = move.sprint = false;
+    resetKeys();
   });
 
-  const move = { forward: false, backward: false, left: false, right: false, sprint: false };
-  let velocityY = 0;
-  let canJump = true;
+  // フォーカスが外れた時の暴走を防止
+  window.addEventListener('blur', resetKeys);
 
   window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
@@ -401,12 +405,13 @@
     }
     if (key === 'r' || e.code === 'KeyR') reload();
 
+    // どのキー配列・全角半角でも確実に反応
     if (e.code === 'KeyW' || key === 'w') move.forward = true;
     if (e.code === 'KeyS' || key === 's') move.backward = true;
     if (e.code === 'KeyA' || key === 'a') move.left = true;
     if (e.code === 'KeyD' || key === 'd') move.right = true;
     if ((e.code === 'Space' || key === ' ') && canJump) { velocityY = 14; canJump = false; }
-    if (e.shiftKey || e.code === 'ShiftLeft' || e.code === 'ShiftRight') move.sprint = true;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') move.sprint = true;
   });
 
   window.addEventListener('keyup', (e) => {
@@ -415,7 +420,7 @@
     if (e.code === 'KeyS' || key === 's') move.backward = false;
     if (e.code === 'KeyA' || key === 'a') move.left = false;
     if (e.code === 'KeyD' || key === 'd') move.right = false;
-    if (!e.shiftKey) move.sprint = false;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') move.sprint = false;
   });
 
   window.addEventListener('mousedown', (e) => {
@@ -439,7 +444,7 @@
     if (aim && w.scope) {
       scopeEl.style.display = 'block';
       crosshairEl.style.display = 'none';
-      camera.fov = 12; // スナイパー超強烈ズーム
+      camera.fov = 12;
       gunMesh.visible = false;
     } else {
       scopeEl.style.display = 'none';
@@ -482,7 +487,7 @@
     setTimeout(() => scene.remove(line), 50);
   }
 
-  // ================= 🚀 ロケット弾 ＆ 爆発システム =================
+  // ================= ロケット弾 ＆ 爆発 =================
   const activeRockets = [];
 
   function spawnRocket(startPos, direction) {
@@ -495,7 +500,7 @@
 
     activeRockets.push({
       mesh,
-      dir: direction.clone().multiplyScalar(45), // ロケット飛翔速度
+      dir: direction.clone().multiplyScalar(45),
       life: 180
     });
   }
@@ -503,7 +508,6 @@
   function createExplosion(pos) {
     playSound('rpg_exp');
 
-    // 爆発光球エフェクト
     const expGeo = new THREE.SphereGeometry(1, 16, 16);
     const expMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.9 });
     const expMesh = new THREE.Mesh(expGeo, expMat);
@@ -521,7 +525,6 @@
       }
     }, 30);
 
-    // 範囲爆発（スプラッシュダメージ）判定 (半径 7.5m)
     const splashRadius = 7.5;
     for (const pId in otherPlayers) {
       const pMesh = otherPlayers[pId];
@@ -532,7 +535,6 @@
       }
     }
 
-    // ロケットジャンプ（自分の足元で爆発したときの跳躍）
     const myDist = pos.distanceTo(camera.position);
     if (myDist <= 5.0) {
       velocityY = 24.0;
@@ -540,7 +542,7 @@
     }
   }
 
-  // ================= 射撃 / 攻撃システム =================
+  // ================= 射撃 / 攻撃 =================
   const raycaster = new THREE.Raycaster();
 
   function shoot() {
@@ -555,7 +557,6 @@
     playSound(w.sound);
 
     if (w.isRocket) {
-      // ロケット弾発射
       const dir = new THREE.Vector3();
       camera.getWorldDirection(dir);
       const startPos = camera.position.clone().add(dir.clone().multiplyScalar(1.2));
@@ -671,7 +672,7 @@
     }
   });
 
-  // ================= 物理 ＆ メインループ =================
+  // ================= 🚀 100% 正確な水平ベクトル移動物理エンジン =================
   let prevTime = performance.now();
 
   function animate() {
@@ -681,7 +682,7 @@
     const delta = Math.min((time - prevTime) / 1000, 0.1);
     prevTime = time;
 
-    // --- ロケット弾の飛翔 ＆ 衝突更新 ---
+    // ロケット弾の飛翔更新
     for (let r = activeRockets.length - 1; r >= 0; r--) {
       const rkt = activeRockets[r];
       rkt.mesh.position.addScaledVector(rkt.dir, delta);
@@ -690,13 +691,11 @@
       let hit = false;
       const rPos = rkt.mesh.position;
 
-      // 壁衝突判定
       for (const b of boxes) {
         if (rPos.x >= b.minX && rPos.x <= b.maxX && rPos.y >= b.minY && rPos.y <= b.maxY && rPos.z >= b.minZ && rPos.z <= b.maxZ) {
           hit = true; break;
         }
       }
-      // 地面判定
       if (rPos.y <= 0.2) hit = true;
 
       if (hit || rkt.life <= 0) {
@@ -709,24 +708,34 @@
     if (controls.isLocked) {
       const speed = (move.sprint ? 20 : 11) * delta;
 
-      const moveVector = new THREE.Vector3();
-      if (move.forward) moveVector.z -= 1;
-      if (move.backward) moveVector.z += 1;
-      if (move.left) moveVector.x -= 1;
-      if (move.right) moveVector.x += 1;
-      moveVector.normalize();
+      // 1. カメラの視線から「真の水平進行方向」を完璧に抽出 (Y成分をカット)
+      const forward = new THREE.Vector3();
+      camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
 
-      const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
-      const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
+      // 水平右方向
+      const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).negate();
 
-      const deltaX = (forward.x * -moveVector.z + right.x * moveVector.x) * speed;
-      const deltaZ = (forward.z * -moveVector.z + right.z * moveVector.x) * speed;
+      // 2. 移動入力の合成（同時押しに対応）
+      let inputZ = (move.forward ? 1 : 0) - (move.backward ? 1 : 0);
+      let inputX = (move.right ? 1 : 0) - (move.left ? 1 : 0);
+
+      const moveDir = new THREE.Vector3();
+      if (inputZ !== 0 || inputX !== 0) {
+        moveDir.addScaledVector(forward, inputZ);
+        moveDir.addScaledVector(right, inputX);
+        moveDir.normalize();
+      }
+
+      const deltaX = moveDir.x * speed;
+      const deltaZ = moveDir.z * speed;
 
       const playerRadius = 0.45;
       const playerHeight = 1.8;
       const feetY = camera.position.y - 1.6;
 
-      // X軸移動と判定
+      // 3. X軸の壁ずり移動と判定
       camera.position.x += deltaX;
       for (const b of boxes) {
         if (feetY < b.maxY - 0.2 && feetY + playerHeight > b.minY) {
@@ -742,7 +751,7 @@
         }
       }
 
-      // Z軸移動と判定
+      // 4. Z軸の壁ずり移動と判定
       camera.position.z += deltaZ;
       for (const b of boxes) {
         if (feetY < b.maxY - 0.2 && feetY + playerHeight > b.minY) {
@@ -758,7 +767,7 @@
         }
       }
 
-      // 重力 ＆ ジャンプ
+      // 5. 重力 ＆ ジャンプ
       velocityY -= 30.0 * delta;
       camera.position.y += velocityY * delta;
 
@@ -766,14 +775,14 @@
       for (const pad of jumpPads) {
         if (Math.abs(camera.position.x - pad.x) < pad.size && Math.abs(camera.position.z - pad.z) < pad.size) {
           if (camera.position.y - 1.6 <= pad.y + 0.8 && camera.position.y - 1.6 >= pad.y - 0.8) {
-            velocityY = 27.0; // 超大ジャンプ！
+            velocityY = 27.0;
             playSound('jump');
             canJump = false;
           }
         }
       }
 
-      // 着地判定
+      // 足場着地判定
       let groundY = 0;
       const px = camera.position.x;
       const pz = camera.position.z;
