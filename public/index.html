@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>CYBER STRIKE 3D - ULTIMATE PERFECT</title>
+  <title>CYBER STRIKE 3D - WARZONE</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
@@ -88,16 +88,16 @@
 <div id="weapon-hud">
   <div id="cur-weapon">1: ASSAULT RIFLE</div>
   <div id="ammo-hud"><span id="ammo-cur">30</span> / <span id="ammo-max">30</span></div>
-  <div style="font-size: 13px; color: #aaa;">[1-5] 武器切替 / [R] リロード / 右クリック: 狙撃</div>
+  <div style="font-size: 13px; color: #aaa;">[1-6] 武器切替 / [R] リロード / [6] ロケラン</div>
 </div>
 
 <div id="kill-log"></div>
 
 <div id="blocker">
-  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D</h1>
-  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | R: リロード | 1~5: 武器</p>
+  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D: WARZONE</h1>
+  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | R: リロード | 1~6: 武器切替</p>
   <input type="text" id="name-input" placeholder="プレイヤー名を入力..." maxlength="10">
-  <button id="start-btn">ゲームスタート (クリック)</button>
+  <button id="start-btn">戦場へ降下する (クリック)</button>
 </div>
 
 <script>
@@ -150,6 +150,26 @@
       gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
       osc.connect(gain); gain.connect(audioCtx.destination);
       osc.start(now); osc.stop(now + 0.12);
+    } else if (type === 'rpg_shoot') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.linearRampToValueAtTime(300, now + 0.2);
+      gain.gain.setValueAtTime(0.6, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.3);
+    } else if (type === 'rpg_exp') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(100, now);
+      osc.frequency.exponentialRampToValueAtTime(15, now + 0.6);
+      gain.gain.setValueAtTime(1.0, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.6);
     } else if (type === 'hit') {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -184,11 +204,12 @@
 
   // ================= 武器データ ＆ 弾薬 =================
   const WEAPONS = {
-    1: { name: 'ASSAULT RIFLE', sound: 'ar', damage: 24, delay: 120, range: 120, auto: true, count: 1, spread: 0.015, maxAmmo: 30, curAmmo: 30, reloadTime: 1200 },
-    2: { name: 'SHOTGUN', sound: 'sg', damage: 16, delay: 750, range: 30, auto: false, count: 8, spread: 0.08, maxAmmo: 6, curAmmo: 6, reloadTime: 1800 },
-    3: { name: 'SNIPER RIFLE', sound: 'sr', damage: 110, delay: 1100, range: 300, auto: false, count: 1, spread: 0.0001, scope: true, maxAmmo: 5, curAmmo: 5, reloadTime: 2000 },
-    4: { name: 'SMG', sound: 'smg', damage: 14, delay: 70, range: 50, auto: true, count: 1, spread: 0.04, maxAmmo: 40, curAmmo: 40, reloadTime: 1000 },
-    5: { name: 'KATANA', sound: 'katana', damage: 95, delay: 350, range: 2.8, auto: false, count: 1, spread: 0, melee: true, maxAmmo: '∞', curAmmo: '∞' }
+    1: { name: 'ASSAULT RIFLE', sound: 'ar', damage: 24, delay: 120, range: 140, auto: true, count: 1, spread: 0.015, maxAmmo: 30, curAmmo: 30, reloadTime: 1200 },
+    2: { name: 'SHOTGUN', sound: 'sg', damage: 16, delay: 750, range: 35, auto: false, count: 8, spread: 0.08, maxAmmo: 6, curAmmo: 6, reloadTime: 1800 },
+    3: { name: 'SNIPER RIFLE', sound: 'sr', damage: 110, delay: 1100, range: 400, auto: false, count: 1, spread: 0.0001, scope: true, maxAmmo: 5, curAmmo: 5, reloadTime: 2000 },
+    4: { name: 'SMG', sound: 'smg', damage: 14, delay: 70, range: 60, auto: true, count: 1, spread: 0.04, maxAmmo: 40, curAmmo: 40, reloadTime: 1000 },
+    5: { name: 'KATANA', sound: 'katana', damage: 95, delay: 350, range: 2.8, auto: false, count: 1, spread: 0, melee: true, maxAmmo: '∞', curAmmo: '∞' },
+    6: { name: 'ROCKET LAUNCHER', sound: 'rpg_shoot', damage: 120, delay: 1400, range: 250, auto: false, count: 1, spread: 0, isRocket: true, maxAmmo: 1, curAmmo: 1, reloadTime: 2200 }
   };
 
   let currentWeaponIndex = 1;
@@ -218,11 +239,11 @@
 
   // ================= Three.js ＆ レンダラー =================
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x70b5ff);
-  scene.fog = new THREE.Fog(0x70b5ff, 40, 220);
+  scene.background = new THREE.Color(0x6ca6cd);
+  scene.fog = new THREE.Fog(0x6ca6cd, 60, 320);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 1.6, 25);
+  camera.position.set(0, 1.6, 60);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -232,14 +253,15 @@
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
   scene.add(ambientLight);
   const sunLight = new THREE.DirectionalLight(0xffffff, 0.85);
-  sunLight.position.set(50, 100, 50);
+  sunLight.position.set(100, 150, 80);
   scene.add(sunLight);
 
-  // 武器モデル
+  // ================= 武器モデル =================
   const weaponHolder = new THREE.Group();
   camera.add(weaponHolder);
   scene.add(camera);
 
+  // 銃
   const gunMesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.16, 0.6),
     new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 })
@@ -247,6 +269,7 @@
   gunMesh.position.set(0.28, -0.22, -0.45);
   weaponHolder.add(gunMesh);
 
+  // 刀
   const katanaMesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.04, 0.8, 0.08),
     new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.1, emissive: 0x00ffff, emissiveIntensity: 0.2 })
@@ -256,19 +279,31 @@
   katanaMesh.visible = false;
   weaponHolder.add(katanaMesh);
 
+  // ロケラン
+  const rpgMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.12, 0.9, 16),
+    new THREE.MeshStandardMaterial({ color: 0x2e4053, metalness: 0.7, roughness: 0.3 })
+  );
+  rpgMesh.rotation.x = Math.PI / 2;
+  rpgMesh.position.set(0.28, -0.18, -0.4);
+  rpgMesh.visible = false;
+  weaponHolder.add(rpgMesh);
+
   function switchWeaponModel() {
-    const isMelee = WEAPONS[currentWeaponIndex].melee;
-    gunMesh.visible = !isMelee && !isAiming;
-    katanaMesh.visible = isMelee;
+    const w = WEAPONS[currentWeaponIndex];
+    gunMesh.visible = !w.melee && !w.isRocket && !isAiming;
+    katanaMesh.visible = w.melee;
+    rpgMesh.visible = w.isRocket && !isAiming;
   }
 
-  // ================= マップ ＆ コリジョン設定 =================
-  const boxes = []; // { minX, maxX, minY, maxY, minZ, maxZ }
+  // ================= 巨大立体マップ ＆ コリジョン =================
+  const boxes = [];
   const jumpPads = [];
 
+  // 広大フロア (240x240)
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(140, 140),
-    new THREE.MeshStandardMaterial({ color: 0x8a9ba8, roughness: 0.8 })
+    new THREE.PlaneGeometry(260, 260),
+    new THREE.MeshStandardMaterial({ color: 0x7f8c8d, roughness: 0.8 })
   );
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
@@ -288,34 +323,52 @@
 
   function addJumpPad(x, y, z) {
     const pad = new THREE.Mesh(
-      new THREE.BoxGeometry(4, 0.4, 4),
-      new THREE.MeshStandardMaterial({ color: 0xf1c40f, emissive: 0xf39c12, emissiveIntensity: 0.6 })
+      new THREE.BoxGeometry(5, 0.5, 5),
+      new THREE.MeshStandardMaterial({ color: 0xf1c40f, emissive: 0xf39c12, emissiveIntensity: 0.7 })
     );
-    pad.position.set(x, y + 0.2, z);
+    pad.position.set(x, y + 0.25, z);
     scene.add(pad);
-    jumpPads.push({ x, z, y: y + 0.2, size: 2.5 });
+    jumpPads.push({ x, z, y: y + 0.25, size: 3.0 });
   }
 
-  // マップ配置
-  addObstacle(0, 0, 0, 14, 10, 14, 0x34495e); // 中央タワー
-  addJumpPad(0, 0, 11);
-  addJumpPad(0, 0, -11);
-  addJumpPad(11, 0, 0);
-  addJumpPad(-11, 0, 0);
+  // 1. 中央要塞ピラミッドタワー (高さ18m)
+  addObstacle(0, 0, 0, 36, 6, 36, 0x34495e); // 下段
+  addObstacle(0, 6, 0, 24, 6, 24, 0x2c3e50); // 中段
+  addObstacle(0, 12, 0, 12, 6, 12, 0x1abc9c); // 最上階スナイパー天守閣
+  addJumpPad(0, 0, 24);
+  addJumpPad(0, 0, -24);
+  addJumpPad(24, 0, 0);
+  addJumpPad(-24, 0, 0);
 
-  addObstacle(30, 0, 30, 8, 8, 8, 0x9b59b6);
-  addJumpPad(30, 0, 22);
-  addObstacle(-30, 0, -30, 8, 8, 8, 0x3498db);
-  addJumpPad(-30, 0, -22);
+  // 2. 空中連絡橋（キャットウォーク）
+  addObstacle(0, 11, 45, 8, 1, 50, 0x7f8c8d);
+  addObstacle(0, 11, -45, 8, 1, 50, 0x7f8c8d);
 
-  addObstacle(18, 0, -18, 5, 4, 10, 0xe74c3c);
-  addObstacle(-18, 0, 18, 10, 4, 5, 0xe67e22);
+  // 3. 四方の巨大要塞タワー
+  addObstacle(70, 0, 70, 16, 14, 16, 0x8e44ad);
+  addJumpPad(70, 0, 56);
+  addObstacle(-70, 0, -70, 16, 14, 16, 0x2980b9);
+  addJumpPad(-70, 0, -56);
+  addObstacle(70, 0, -70, 16, 14, 16, 0xd35400);
+  addJumpPad(70, 0, -56);
+  addObstacle(-70, 0, 70, 16, 14, 16, 0x27ae60);
+  addJumpPad(-70, 0, 56);
 
-  // 外壁
-  addObstacle(0, 0, 68, 140, 8, 2, 0x2c3e50);
-  addObstacle(0, 0, -68, 140, 8, 2, 0x2c3e50);
-  addObstacle(70, 0, 0, 2, 8, 140, 0x2c3e50);
-  addObstacle(-70, 0, 0, 2, 8, 140, 0x2c3e50);
+  // 4. コンテナ迷路 ＆ 市街地遮蔽物エリア
+  const colors = [0xe74c3c, 0x3498db, 0xf39c12, 0x2ecc71, 0x95a5a6];
+  for (let i = 0; i < 28; i++) {
+    const rx = (Math.random() - 0.5) * 180;
+    const rz = (Math.random() - 0.5) * 180;
+    if (Math.abs(rx) > 25 || Math.abs(rz) > 25) {
+      addObstacle(rx, 0, rz, 6 + Math.random() * 8, 4 + Math.random() * 5, 6 + Math.random() * 8, colors[i % colors.length]);
+    }
+  }
+
+  // マップ外周の巨大防壁
+  addObstacle(0, 0, 128, 260, 14, 4, 0x1f2c39);
+  addObstacle(0, 0, -128, 260, 14, 4, 0x1f2c39);
+  addObstacle(128, 0, 0, 4, 14, 260, 0x1f2c39);
+  addObstacle(-128, 0, 0, 4, 14, 260, 0x1f2c39);
 
   // ================= FPS操作 =================
   const controls = new THREE.PointerLockControls(camera, document.body);
@@ -330,7 +383,6 @@
   controls.addEventListener('unlock', () => {
     blocker.style.display = 'flex';
     toggleADS(false);
-    // キー入力をすべてリセット
     move.forward = move.backward = move.left = move.right = move.sprint = false;
   });
 
@@ -340,7 +392,7 @@
 
   window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
-    if (['1','2','3','4','5'].includes(key)) {
+    if (['1','2','3','4','5','6'].includes(key)) {
       currentWeaponIndex = parseInt(key);
       document.getElementById('cur-weapon').innerText = `${currentWeaponIndex}: ${WEAPONS[currentWeaponIndex].name}`;
       toggleADS(false);
@@ -387,7 +439,7 @@
     if (aim && w.scope) {
       scopeEl.style.display = 'block';
       crosshairEl.style.display = 'none';
-      camera.fov = 14;
+      camera.fov = 12; // スナイパー超強烈ズーム
       gunMesh.visible = false;
     } else {
       scopeEl.style.display = 'none';
@@ -430,7 +482,65 @@
     setTimeout(() => scene.remove(line), 50);
   }
 
-  // ================= 射撃 / 刀 攻撃システム =================
+  // ================= 🚀 ロケット弾 ＆ 爆発システム =================
+  const activeRockets = [];
+
+  function spawnRocket(startPos, direction) {
+    const rocketGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8);
+    const rocketMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+    const mesh = new THREE.Mesh(rocketGeo, rocketMat);
+    mesh.position.copy(startPos);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    scene.add(mesh);
+
+    activeRockets.push({
+      mesh,
+      dir: direction.clone().multiplyScalar(45), // ロケット飛翔速度
+      life: 180
+    });
+  }
+
+  function createExplosion(pos) {
+    playSound('rpg_exp');
+
+    // 爆発光球エフェクト
+    const expGeo = new THREE.SphereGeometry(1, 16, 16);
+    const expMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.9 });
+    const expMesh = new THREE.Mesh(expGeo, expMat);
+    expMesh.position.copy(pos);
+    scene.add(expMesh);
+
+    let scale = 1;
+    const interval = setInterval(() => {
+      scale += 0.8;
+      expMesh.scale.set(scale, scale, scale);
+      expMesh.material.opacity -= 0.12;
+      if (expMesh.material.opacity <= 0) {
+        clearInterval(interval);
+        scene.remove(expMesh);
+      }
+    }, 30);
+
+    // 範囲爆発（スプラッシュダメージ）判定 (半径 7.5m)
+    const splashRadius = 7.5;
+    for (const pId in otherPlayers) {
+      const pMesh = otherPlayers[pId];
+      const dist = pos.distanceTo(pMesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
+      if (dist <= splashRadius) {
+        const damage = Math.round((1 - dist / splashRadius) * 110) + 15;
+        socket.emit('hit', { targetId: pId, damage, weapon: 'ROCKET LAUNCHER' });
+      }
+    }
+
+    // ロケットジャンプ（自分の足元で爆発したときの跳躍）
+    const myDist = pos.distanceTo(camera.position);
+    if (myDist <= 5.0) {
+      velocityY = 24.0;
+      canJump = false;
+    }
+  }
+
+  // ================= 射撃 / 攻撃システム =================
   const raycaster = new THREE.Raycaster();
 
   function shoot() {
@@ -443,6 +553,18 @@
     if (!w.melee) { w.curAmmo--; updateAmmoUI(); }
 
     playSound(w.sound);
+
+    if (w.isRocket) {
+      // ロケット弾発射
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      const startPos = camera.position.clone().add(dir.clone().multiplyScalar(1.2));
+      spawnRocket(startPos, dir);
+
+      rpgMesh.position.z += 0.2;
+      setTimeout(() => rpgMesh.position.z -= 0.2, 80);
+      return;
+    }
 
     if (w.melee) {
       katanaMesh.rotation.z += 1.2;
@@ -549,7 +671,7 @@
     }
   });
 
-  // ================= 軸分離・絶対にスタックしない物理エンジン =================
+  // ================= 物理 ＆ メインループ =================
   let prevTime = performance.now();
 
   function animate() {
@@ -559,10 +681,34 @@
     const delta = Math.min((time - prevTime) / 1000, 0.1);
     prevTime = time;
 
-    if (controls.isLocked) {
-      const speed = (move.sprint ? 18 : 10) * delta;
+    // --- ロケット弾の飛翔 ＆ 衝突更新 ---
+    for (let r = activeRockets.length - 1; r >= 0; r--) {
+      const rkt = activeRockets[r];
+      rkt.mesh.position.addScaledVector(rkt.dir, delta);
+      rkt.life--;
 
-      // 前後左右の移動ベクトルを算出
+      let hit = false;
+      const rPos = rkt.mesh.position;
+
+      // 壁衝突判定
+      for (const b of boxes) {
+        if (rPos.x >= b.minX && rPos.x <= b.maxX && rPos.y >= b.minY && rPos.y <= b.maxY && rPos.z >= b.minZ && rPos.z <= b.maxZ) {
+          hit = true; break;
+        }
+      }
+      // 地面判定
+      if (rPos.y <= 0.2) hit = true;
+
+      if (hit || rkt.life <= 0) {
+        createExplosion(rPos);
+        scene.remove(rkt.mesh);
+        activeRockets.splice(r, 1);
+      }
+    }
+
+    if (controls.isLocked) {
+      const speed = (move.sprint ? 20 : 11) * delta;
+
       const moveVector = new THREE.Vector3();
       if (move.forward) moveVector.z -= 1;
       if (move.backward) moveVector.z += 1;
@@ -570,7 +716,6 @@
       if (move.right) moveVector.x += 1;
       moveVector.normalize();
 
-      // カメラの回転に合わせてワールド移動量に変換
       const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
       const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
 
@@ -581,7 +726,7 @@
       const playerHeight = 1.8;
       const feetY = camera.position.y - 1.6;
 
-      // --- 1. X軸の移動と判定（壁ずり移動用） ---
+      // X軸移動と判定
       camera.position.x += deltaX;
       for (const b of boxes) {
         if (feetY < b.maxY - 0.2 && feetY + playerHeight > b.minY) {
@@ -591,13 +736,13 @@
             camera.position.z + playerRadius > b.minZ &&
             camera.position.z - playerRadius < b.maxZ
           ) {
-            camera.position.x -= deltaX; // X方向のみ押し戻す
+            camera.position.x -= deltaX;
             break;
           }
         }
       }
 
-      // --- 2. Z軸の移動と判定（壁ずり移動用） ---
+      // Z軸移動と判定
       camera.position.z += deltaZ;
       for (const b of boxes) {
         if (feetY < b.maxY - 0.2 && feetY + playerHeight > b.minY) {
@@ -607,29 +752,29 @@
             camera.position.z + playerRadius > b.minZ &&
             camera.position.z - playerRadius < b.maxZ
           ) {
-            camera.position.z -= deltaZ; // Z方向のみ押し戻す
+            camera.position.z -= deltaZ;
             break;
           }
         }
       }
 
-      // --- 3. 重力 ＆ ジャンプパッド ---
+      // 重力 ＆ ジャンプ
       velocityY -= 30.0 * delta;
       camera.position.y += velocityY * delta;
 
-      // ジャンプ台判定
+      // ジャンプ台
       for (const pad of jumpPads) {
         if (Math.abs(camera.position.x - pad.x) < pad.size && Math.abs(camera.position.z - pad.z) < pad.size) {
           if (camera.position.y - 1.6 <= pad.y + 0.8 && camera.position.y - 1.6 >= pad.y - 0.8) {
-            velocityY = 25.0;
+            velocityY = 27.0; // 超大ジャンプ！
             playSound('jump');
             canJump = false;
           }
         }
       }
 
-      // --- 4. 足場 ＆ 床着地判定 ---
-      let groundY = 0; // 最下層の床
+      // 着地判定
+      let groundY = 0;
       const px = camera.position.x;
       const pz = camera.position.z;
 
@@ -647,9 +792,9 @@
         canJump = true;
       }
 
-      // --- 5. セーフティ（落下脱出） ---
+      // 落下セーフティ
       if (camera.position.y < -10) {
-        camera.position.set(0, 5, 25);
+        camera.position.set(0, 10, 60);
         velocityY = 0;
       }
 
