@@ -2,16 +2,16 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>CYBER CASTLE 3D - WARZONE</title>
+  <title>MINECRAFT STRIKE 3D</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
+    body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
 
     #crosshair {
       position: absolute; top: 50%; left: 50%; width: 14px; height: 14px;
       transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
     }
-    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #00ffcc; box-shadow: 0 0 4px #00ffcc; }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 3px #000; }
     #crosshair::before { top: 6px; left: -10px; width: 34px; height: 2px; }
     #crosshair::after { top: -10px; left: 6px; width: 2px; height: 34px; }
 
@@ -36,32 +36,40 @@
 
     #kill-banner {
       position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
-      background: rgba(255, 0, 85, 0.85); color: #fff; padding: 12px 35px;
-      font-size: 26px; font-weight: 900; letter-spacing: 2px; border-radius: 8px;
-      box-shadow: 0 0 20px rgba(255, 0, 85, 0.8); opacity: 0; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      pointer-events: none; z-index: 30;
+      background: rgba(255, 0, 85, 0.88); color: #fff; padding: 12px 35px;
+      font-size: 26px; font-weight: 900; letter-spacing: 2px; border-radius: 4px;
+      border: 3px solid #fff; opacity: 0; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none; z-index: 30; text-shadow: 2px 2px #000;
     }
     #kill-banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
 
     #hud { position: absolute; bottom: 25px; left: 25px; color: #fff; font-size: 22px; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; z-index: 10; }
     #build-hud { color: #f1c40f; font-size: 18px; margin-top: 5px; }
-    #weapon-hud { position: absolute; bottom: 25px; right: 25px; color: #00ffcc; font-size: 24px; font-weight: bold; pointer-events: none; text-align: right; text-shadow: 2px 2px 4px #000; z-index: 10; }
+    #weapon-hud { position: absolute; bottom: 25px; right: 25px; color: #55ff55; font-size: 24px; font-weight: bold; pointer-events: none; text-align: right; text-shadow: 2px 2px 4px #000; z-index: 10; }
     #ammo-hud { font-size: 38px; color: #fff; }
-    #kill-log { position: absolute; top: 20px; right: 20px; color: #ffeb3b; font-size: 15px; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 3px #000; z-index: 10; }
+    #kill-log { position: absolute; top: 20px; right: 20px; color: #ffff55; font-size: 15px; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 3px #000; z-index: 10; }
 
+    /* スタート画面・スキン選択 */
     #blocker {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(10, 15, 25, 0.92); display: flex; flex-direction: column;
+      background: rgba(18, 24, 38, 0.94); display: flex; flex-direction: column;
       justify-content: center; align-items: center; color: #fff; z-index: 100;
     }
+    .skin-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+    .skin-btn {
+      padding: 10px 16px; font-size: 16px; font-weight: bold; border-radius: 4px;
+      border: 3px solid #555; background: #222; color: #fff; cursor: pointer; transition: all 0.15s;
+    }
+    .skin-btn.active { border-color: #55ff55; background: #2e5339; transform: scale(1.08); box-shadow: 0 0 10px #55ff55; }
     input {
-      padding: 12px 20px; font-size: 20px; border-radius: 8px; border: 2px solid #00ffcc;
+      padding: 12px 20px; font-size: 20px; border-radius: 4px; border: 3px solid #55ff55;
       background: #111; color: #fff; margin-bottom: 15px; text-align: center; outline: none;
     }
-    button {
-      padding: 14px 40px; font-size: 22px; font-weight: bold; background: #00ffcc;
-      border: none; border-radius: 8px; cursor: pointer; color: #000;
+    #start-btn {
+      padding: 14px 45px; font-size: 22px; font-weight: bold; background: #55ff55;
+      border: 3px solid #fff; border-radius: 4px; cursor: pointer; color: #000;
     }
+    #start-btn:hover { background: #77ff77; transform: scale(1.05); }
   </style>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -82,27 +90,148 @@
 
 <div id="hud">
   <div>❤️ HP: <span id="hp-val">100</span></div>
-  <div id="build-hud">🧱 建築: [Q] キーで目の前に壁設置 (HP: 150)</div>
-  <div style="font-size: 14px; color: #00ffcc; margin-top: 3px;">⚡ 黄色い床: 大ジャンプ台</div>
+  <div id="build-hud">🧱 建築: [Q] キーで木材ブロック壁設置</div>
+  <div style="font-size: 14px; color: #55ff55; margin-top: 3px;">⚡ 黄色い床: スライム大ジャンプ台</div>
 </div>
 
 <div id="weapon-hud">
   <div id="cur-weapon">1: ASSAULT RIFLE</div>
   <div id="ammo-hud"><span id="ammo-cur">30</span> / <span id="ammo-max">30</span></div>
-  <div style="font-size: 13px; color: #aaa;">[1-6] 武器 / [R] リロード / [Q] 建築壁</div>
+  <div style="font-size: 13px; color: #aaa;">[1-6] 武器 / [R] リロード / [Q] 木材建築</div>
 </div>
 
 <div id="kill-log"></div>
 
 <div id="blocker">
-  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">🏰 CYBER CASTLE 3D</h1>
-  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | Q: 壁建築 | 1~6: 武器</p>
-  <input type="text" id="name-input" placeholder="プレイヤー名を入力..." maxlength="10">
-  <button id="start-btn">城塞バトルに参加 (クリック)</button>
+  <h1 style="color: #55ff55; letter-spacing: 4px; font-size: 46px; margin-bottom: 5px; text-shadow: 3px 3px #000;">⛏️ MINECRAFT STRIKE 3D</h1>
+  <p style="color: #ccc; margin-bottom: 15px;">▼ スキン（ビジュアル）を選択 ▼</p>
+  
+  <div class="skin-selector">
+    <button class="skin-btn active" data-skin="steve">スティーブ</button>
+    <button class="skin-btn" data-skin="alex">アレックス</button>
+    <button class="skin-btn" data-skin="creeper">クリーパー</button>
+    <button class="skin-btn" data-skin="knight">騎士 (Knight)</button>
+    <button class="skin-btn" data-skin="enderman">エンドマン</button>
+  </div>
+
+  <input type="text" id="name-input" placeholder="プレイヤー名..." maxlength="10">
+  <button id="start-btn">ワールドに参加</button>
 </div>
 
 <script>
   const socket = io();
+  let selectedSkin = 'steve';
+
+  // スキン切り替えUI
+  document.querySelectorAll('.skin-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.skin-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedSkin = btn.getAttribute('data-skin');
+    });
+  });
+
+  // ================= 🎨 プロシージャル・マイクラドット絵テクスチャ生成エンジン =================
+  function createProceduralTexture(type) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 16;
+    const ctx = canvas.getContext('2d');
+
+    if (type === 'grass_top') {
+      for (let x = 0; x < 16; x++) {
+        for (let y = 0; y < 16; y++) {
+          const g = Math.floor(130 + Math.random() * 65);
+          ctx.fillStyle = `rgb(${Math.floor(g*0.5)}, ${g}, ${Math.floor(g*0.2)})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    } else if (type === 'grass_side') {
+      // 下部は土、上部3〜4ピクセルが緑の草
+      for (let x = 0; x < 16; x++) {
+        for (let y = 0; y < 16; y++) {
+          const d = Math.floor(90 + Math.random() * 40);
+          ctx.fillStyle = `rgb(${d}, ${Math.floor(d*0.65)}, ${Math.floor(d*0.4)})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      for (let x = 0; x < 16; x++) {
+        const drop = Math.floor(3 + Math.random() * 2);
+        for (let y = 0; y < drop; y++) {
+          const g = Math.floor(130 + Math.random() * 65);
+          ctx.fillStyle = `rgb(${Math.floor(g*0.5)}, ${g}, ${Math.floor(g*0.2)})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    } else if (type === 'stone_brick') {
+      ctx.fillStyle = '#6e6e6e';
+      ctx.fillRect(0, 0, 16, 16);
+      for (let x = 0; x < 16; x++) {
+        for (let y = 0; y < 16; y++) {
+          if (x === 0 || x === 8 || y === 0 || y === 8) {
+            ctx.fillStyle = '#3a3a3a';
+          } else {
+            const v = Math.floor(100 + Math.random() * 35);
+            ctx.fillStyle = `rgb(${v}, ${v}, ${v})`;
+          }
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    } else if (type === 'wood_plank') {
+      ctx.fillStyle = '#9e7343';
+      ctx.fillRect(0, 0, 16, 16);
+      for (let x = 0; x < 16; x++) {
+        for (let y = 0; y < 16; y++) {
+          if (y % 4 === 0) {
+            ctx.fillStyle = '#5c3e1e';
+          } else {
+            const v = Math.floor(140 + Math.random() * 30);
+            ctx.fillStyle = `rgb(${v}, ${Math.floor(v*0.72)}, ${Math.floor(v*0.42)})`;
+          }
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    } else if (type === 'leaves') {
+      ctx.fillStyle = '#1e541b';
+      ctx.fillRect(0, 0, 16, 16);
+      for (let x = 0; x < 16; x++) {
+        for (let y = 0; y < 16; y++) {
+          if (Math.random() > 0.3) {
+            const g = Math.floor(70 + Math.random() * 70);
+            ctx.fillStyle = `rgb(${Math.floor(g*0.3)}, ${g}, ${Math.floor(g*0.2)})`;
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+    } else if (type === 'tnt') {
+      ctx.fillStyle = '#db2b20';
+      ctx.fillRect(0, 0, 16, 16);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 6, 16, 4);
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 3px sans-serif';
+      ctx.fillText('TNT', 4, 9);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.magFilter = THREE.NearestFilter; // マイクラ特有のクッキリドット絵表示
+    tex.minFilter = THREE.NearestFilter;
+    return tex;
+  }
+
+  // マテリアルセット
+  const grassMat = [
+    new THREE.MeshStandardMaterial({ map: createProceduralTexture('grass_side') }),
+    new THREE.MeshStandardMaterial({ map: createProceduralTexture('grass_side') }),
+    new THREE.MeshStandardMaterial({ map: createProceduralTexture('grass_top') }),
+    new THREE.MeshStandardMaterial({ map: createProceduralTexture('grass_side') }),
+    new THREE.MeshStandardMaterial({ map: createProceduralTexture('grass_side') }),
+    new THREE.MeshStandardMaterial({ map: createProceduralTexture('grass_side') })
+  ];
+  const stoneBrickMat = new THREE.MeshStandardMaterial({ map: createProceduralTexture('stone_brick'), roughness: 0.8 });
+  const woodPlankMat = new THREE.MeshStandardMaterial({ map: createProceduralTexture('wood_plank'), roughness: 0.7 });
+  const leavesMat = new THREE.MeshStandardMaterial({ map: createProceduralTexture('leaves'), transparent: true, opacity: 0.95 });
+  const tntMat = new THREE.MeshStandardMaterial({ map: createProceduralTexture('tnt') });
 
   // ================= 🔊 音声エンジン =================
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -161,22 +290,22 @@
       gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
       osc.connect(gain); gain.connect(audioCtx.destination);
       osc.start(now); osc.stop(now + 0.3);
-    } else if (type === 'rpg_exp') {
+    } else if (type === 'rpg_exp' || type === 'shatter') {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'square';
-      osc.frequency.setValueAtTime(100, now);
-      osc.frequency.exponentialRampToValueAtTime(15, now + 0.6);
-      gain.gain.setValueAtTime(1.0, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(15, now + 0.5);
+      gain.gain.setValueAtTime(0.9, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
       osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(now); osc.stop(now + 0.6);
+      osc.start(now); osc.stop(now + 0.5);
     } else if (type === 'build') {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, now);
-      osc.frequency.setValueAtTime(450, now + 0.05);
+      osc.frequency.setValueAtTime(250, now);
+      osc.frequency.setValueAtTime(400, now + 0.05);
       gain.gain.setValueAtTime(0.4, now);
       gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
       osc.connect(gain); gain.connect(audioCtx.destination);
@@ -219,8 +348,8 @@
     2: { name: 'SHOTGUN', sound: 'sg', damage: 16, delay: 750, range: 35, auto: false, count: 8, spread: 0.08, maxAmmo: 6, curAmmo: 6, reloadTime: 1800 },
     3: { name: 'SNIPER RIFLE', sound: 'sr', damage: 110, delay: 1100, range: 400, auto: false, count: 1, spread: 0.0001, scope: true, maxAmmo: 5, curAmmo: 5, reloadTime: 2000 },
     4: { name: 'SMG', sound: 'smg', damage: 14, delay: 70, range: 60, auto: true, count: 1, spread: 0.04, maxAmmo: 40, curAmmo: 40, reloadTime: 1000 },
-    5: { name: 'KATANA', sound: 'katana', damage: 95, delay: 350, range: 2.8, auto: false, count: 1, spread: 0, melee: true, maxAmmo: '∞', curAmmo: '∞' },
-    6: { name: 'ROCKET LAUNCHER', sound: 'rpg_shoot', damage: 120, delay: 1400, range: 250, auto: false, count: 1, spread: 0, isRocket: true, maxAmmo: 1, curAmmo: 1, reloadTime: 2200 }
+    5: { name: 'DIAMOND SWORD', sound: 'katana', damage: 95, delay: 350, range: 2.8, auto: false, count: 1, spread: 0, melee: true, maxAmmo: '∞', curAmmo: '∞' },
+    6: { name: 'TNT CANNON RPG', sound: 'rpg_shoot', damage: 120, delay: 1400, range: 250, auto: false, count: 1, spread: 0, isRocket: true, maxAmmo: 1, curAmmo: 1, reloadTime: 2200 }
   };
 
   let currentWeaponIndex = 1;
@@ -251,8 +380,8 @@
 
   // ================= Three.js ＆ レンダラー =================
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x6ca6cd);
-  scene.fog = new THREE.Fog(0x6ca6cd, 60, 320);
+  scene.background = new THREE.Color(0x78a7ff);
+  scene.fog = new THREE.Fog(0x78a7ff, 60, 320);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(0, 1.6, 80);
@@ -262,38 +391,39 @@
   renderer.shadowMap.enabled = true;
   document.body.appendChild(renderer.domElement);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
   scene.add(ambientLight);
-  const sunLight = new THREE.DirectionalLight(0xffffff, 0.85);
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.75);
   sunLight.position.set(100, 150, 80);
   scene.add(sunLight);
 
-  // 武器モデル
+  // ================= 武器モデル（ダイヤの剣・ボクセル銃） =================
   const weaponHolder = new THREE.Group();
   camera.add(weaponHolder);
   scene.add(camera);
 
   const gunMesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.16, 0.6),
-    new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 })
+    new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 })
   );
   gunMesh.position.set(0.28, -0.22, -0.45);
   weaponHolder.add(gunMesh);
 
-  const katanaMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.8, 0.08),
-    new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.1, emissive: 0x00ffff, emissiveIntensity: 0.2 })
+  // ダイヤの剣
+  const swordMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.75, 0.08),
+    new THREE.MeshStandardMaterial({ color: 0x2ee6d6, emissive: 0x00ffff, emissiveIntensity: 0.3 })
   );
-  katanaMesh.position.set(0.3, -0.15, -0.4);
-  katanaMesh.rotation.set(Math.PI / 4, 0, -Math.PI / 6);
-  katanaMesh.visible = false;
-  weaponHolder.add(katanaMesh);
+  swordMesh.position.set(0.3, -0.15, -0.4);
+  swordMesh.rotation.set(Math.PI / 4, 0, -Math.PI / 6);
+  swordMesh.visible = false;
+  weaponHolder.add(swordMesh);
 
+  // TNT RPG
   const rpgMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.1, 0.12, 0.9, 16),
-    new THREE.MeshStandardMaterial({ color: 0x2e4053, metalness: 0.7, roughness: 0.3 })
+    new THREE.BoxGeometry(0.2, 0.2, 0.8),
+    tntMat
   );
-  rpgMesh.rotation.x = Math.PI / 2;
   rpgMesh.position.set(0.28, -0.18, -0.4);
   rpgMesh.visible = false;
   weaponHolder.add(rpgMesh);
@@ -301,23 +431,26 @@
   function switchWeaponModel() {
     const w = WEAPONS[currentWeaponIndex];
     gunMesh.visible = !w.melee && !w.isRocket && !isAiming;
-    katanaMesh.visible = w.melee;
+    swordMesh.visible = w.melee;
     rpgMesh.visible = w.isRocket && !isAiming;
   }
 
-  // ================= 🏰 巨大立体「サイバー城」 ＆ マップ構築 =================
+  // ================= ⛏️ マイクラ ボクセルワールド ＆ コリジョン =================
   const boxes = [];
   const jumpPads = [];
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(280, 280),
-    new THREE.MeshStandardMaterial({ color: 0x5a6577, roughness: 0.8 })
-  );
+  // 草原フロア
+  const floorGeo = new THREE.PlaneGeometry(280, 280);
+  const floorMat = new THREE.MeshStandardMaterial({ map: createProceduralTexture('grass_top'), roughness: 0.8 });
+  floorMat.map.repeat.set(70, 70);
+  floorMat.map.wrapS = THREE.RepeatWrapping;
+  floorMat.map.wrapT = THREE.RepeatWrapping;
+  const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
 
-  function addObstacle(x, y, z, w, h, d, color = 0x2c3e50) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }));
+  function addBlock(x, y, z, w, h, d, mat) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     mesh.position.set(x, y + h / 2, z);
     scene.add(mesh);
 
@@ -331,86 +464,93 @@
 
   function addJumpPad(x, y, z) {
     const pad = new THREE.Mesh(
-      new THREE.BoxGeometry(5, 0.5, 5),
-      new THREE.MeshStandardMaterial({ color: 0xf1c40f, emissive: 0xf39c12, emissiveIntensity: 0.7 })
+      new THREE.BoxGeometry(4, 0.4, 4),
+      new THREE.MeshStandardMaterial({ color: 0x55ff55, emissive: 0x22aa22, emissiveIntensity: 0.6 }) // スライムブロック
     );
-    pad.position.set(x, y + 0.25, z);
+    pad.position.set(x, y + 0.2, z);
     scene.add(pad);
-    jumpPads.push({ x, z, y: y + 0.25, size: 3.0 });
+    jumpPads.push({ x, z, y: y + 0.2, size: 2.5 });
   }
 
-  // --- 🏰 巨大な城（Castle） ---
-  const castleCenterZ = -40;
+  // 木を生成する関数
+  function addTree(x, z) {
+    addBlock(x, 0, z, 2, 8, 2, woodPlankMat); // 幹
+    addBlock(x, 8, z, 6, 4, 6, leavesMat);    // 葉
+    addBlock(x, 12, z, 4, 3, 4, leavesMat);
+  }
 
-  // 城壁（外郭・回廊）
-  addObstacle(0, 0, castleCenterZ + 30, 24, 8, 4, 0x3d4852); // 正門壁（左）
-  addObstacle(0, 0, castleCenterZ - 30, 60, 8, 4, 0x3d4852); // 北城壁
-  addObstacle(30, 0, castleCenterZ, 4, 8, 64, 0x3d4852);     // 東城壁
-  addObstacle(-30, 0, castleCenterZ, 4, 8, 64, 0x3d4852);    // 西城壁
+  // 1. 🏰 石レンガの城（Castle）
+  const cz = -40;
+  addBlock(0, 0, cz + 30, 24, 8, 4, stoneBrickMat);
+  addBlock(0, 0, cz - 30, 60, 8, 4, stoneBrickMat);
+  addBlock(30, 0, cz, 4, 8, 64, stoneBrickMat);
+  addBlock(-30, 0, cz, 4, 8, 64, stoneBrickMat);
 
-  // 城の4隅の防衛タワー
-  addObstacle(30, 0, castleCenterZ + 30, 10, 14, 10, 0x2c3e50);
-  addObstacle(-30, 0, castleCenterZ + 30, 10, 14, 10, 0x2c3e50);
-  addObstacle(30, 0, castleCenterZ - 30, 10, 14, 10, 0x2c3e50);
-  addObstacle(-30, 0, castleCenterZ - 30, 10, 14, 10, 0x2c3e50);
+  // 四隅のタワー
+  addBlock(30, 0, cz + 30, 10, 14, 10, stoneBrickMat);
+  addBlock(-30, 0, cz + 30, 10, 14, 10, stoneBrickMat);
+  addBlock(30, 0, cz - 30, 10, 14, 10, stoneBrickMat);
+  addBlock(-30, 0, cz - 30, 10, 14, 10, stoneBrickMat);
 
-  // 城の中央天守閣（3段構造・高さ20m）
-  addObstacle(0, 0, castleCenterZ, 26, 8, 26, 0x1f2a38);   // 天守下段
-  addObstacle(0, 8, castleCenterZ, 18, 7, 18, 0x2e4053);   // 天守中段
-  addObstacle(0, 15, castleCenterZ, 10, 5, 10, 0xd35400);  // 最上階天守スナイパー台
+  // 天守閣
+  addBlock(0, 0, cz, 26, 8, 26, stoneBrickMat);
+  addBlock(0, 8, cz, 18, 7, 18, stoneBrickMat);
+  addBlock(0, 15, cz, 10, 5, 10, woodPlankMat);
 
-  // 城へ侵入・登攀用ジャンプ台
-  addJumpPad(0, 0, castleCenterZ + 38);  // 正門突破ジャンプ
-  addJumpPad(0, 0, castleCenterZ + 18);  // 天守へ登るジャンプ
-  addJumpPad(30, 0, castleCenterZ + 18); // 東タワーへ
-  addJumpPad(-30, 0, castleCenterZ + 18);// 西タワーへ
+  addJumpPad(0, 0, cz + 38);
+  addJumpPad(0, 0, cz + 18);
+  addJumpPad(30, 0, cz + 18);
+  addJumpPad(-30, 0, cz + 18);
 
-  // 周辺の砦 ＆ 遮蔽物
-  addObstacle(60, 0, 40, 12, 6, 12, 0x8e44ad);
-  addJumpPad(60, 0, 40);
-  addObstacle(-60, 0, 40, 12, 6, 12, 0x2980b9);
-  addJumpPad(-60, 0, 40);
+  // 2. 🌲 オークの原生林（ツリーエリア）
+  for (let i = 0; i < 18; i++) {
+    const rx = (Math.random() - 0.5) * 200;
+    const rz = (Math.random() - 0.5) * 120 + 40;
+    if (Math.abs(rx) > 20 || Math.abs(rz - 80) > 20) {
+      addTree(rx, rz);
+    }
+  }
+
+  // 3. 💥 TNTタワー
+  addBlock(65, 0, 40, 8, 12, 8, tntMat);
+  addJumpPad(65, 0, 40);
+  addBlock(-65, 0, 40, 8, 12, 8, tntMat);
+  addJumpPad(-65, 0, 40);
 
   // 外周防壁
-  addObstacle(0, 0, 138, 280, 16, 4, 0x1f2c39);
-  addObstacle(0, 0, -138, 280, 16, 4, 0x1f2c39);
-  addObstacle(138, 0, 0, 4, 16, 280, 0x1f2c39);
-  addObstacle(-138, 0, 0, 4, 16, 280, 0x1f2c39);
+  addBlock(0, 0, 138, 280, 16, 4, stoneBrickMat);
+  addBlock(0, 0, -138, 280, 16, 4, stoneBrickMat);
+  addBlock(138, 0, 0, 4, 16, 280, stoneBrickMat);
+  addBlock(-138, 0, 0, 4, 16, 280, stoneBrickMat);
 
-  // ================= 🧱 リアルタイム建築システム =================
-  const builtWalls = {}; // id -> { mesh, boxIndex, boxData }
+  // ================= 🧱 木材ブロック建築システム =================
+  const builtWalls = {};
 
   function spawnWallMesh(wallData) {
-    const wallGeo = new THREE.BoxGeometry(5.0, 3.5, 0.6);
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0xd35400, roughness: 0.7 });
-    const mesh = new THREE.Mesh(wallGeo, wallMat);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(4.5, 3.5, 0.8), woodPlankMat);
     mesh.position.set(wallData.x, wallData.y + 1.75, wallData.z);
     mesh.rotation.y = wallData.rotY;
     scene.add(mesh);
 
-    // 当たり判定用（AABB簡易登録）
     const boxData = {
-      minX: wallData.x - 2.8, maxX: wallData.x + 2.8,
+      minX: wallData.x - 2.5, maxX: wallData.x + 2.5,
       minY: wallData.y, maxY: wallData.y + 3.5,
-      minZ: wallData.z - 2.8, maxZ: wallData.z + 2.8
+      minZ: wallData.z - 2.5, maxZ: wallData.z + 2.5
     };
     boxes.push(boxData);
-    const boxIndex = boxes.length - 1;
-
     mesh.userData = { isWall: true, wallId: wallData.id };
-    builtWalls[wallData.id] = { mesh, boxIndex, boxData };
+    builtWalls[wallData.id] = { mesh, boxData };
   }
 
   function tryBuildWall() {
     const now = Date.now();
-    if (now - lastBuildTime < 400) return; // 建築クールダウン
+    if (now - lastBuildTime < 350) return;
     lastBuildTime = now;
 
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
     dir.y = 0; dir.normalize();
 
-    // 目の前3.5mに壁を設置
     const buildPos = camera.position.clone().add(dir.clone().multiplyScalar(3.5));
     const groundY = camera.position.y - 1.6;
 
@@ -424,33 +564,292 @@
     playSound('build');
   }
 
-  socket.on('wallBuilt', (wallData) => {
-    spawnWallMesh(wallData);
-  });
-
+  socket.on('wallBuilt', (wallData) => spawnWallMesh(wallData));
   socket.on('wallDamaged', (data) => {
-    if (builtWalls[data.wallId]) {
-      builtWalls[data.wallId].mesh.material.color.setHex(0xe74c3c); // 被弾で赤く光る
-    }
+    if (builtWalls[data.wallId]) builtWalls[data.wallId].mesh.material = tntMat;
   });
-
   socket.on('wallDestroyed', (wallId) => {
     if (builtWalls[wallId]) {
+      spawnVoxelShatter(builtWalls[wallId].mesh.position, 0x9e7343, 12);
       scene.remove(builtWalls[wallId].mesh);
-      // コリジョン無効化
-      const b = builtWalls[wallId].boxData;
-      b.minY = -999; b.maxY = -999;
+      builtWalls[wallId].boxData.minY = -999;
+      builtWalls[wallId].boxData.maxY = -999;
       delete builtWalls[wallId];
-      playSound('rpg_exp');
+      playSound('shatter');
     }
   });
 
-  // ================= 操作 ＆ 入力管理 =================
+  // ================= 💥 敵撃破時のボクセル粉砕・物理爆発エフェクト =================
+  const activeParticles = [];
+
+  function spawnVoxelShatter(pos, baseColor, count = 24) {
+    playSound('shatter');
+    for (let i = 0; i < count; i++) {
+      const size = 0.2 + Math.random() * 0.25;
+      const pMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(size, size, size),
+        new THREE.MeshStandardMaterial({ color: baseColor })
+      );
+      pMesh.position.set(
+        pos.x + (Math.random() - 0.5) * 0.8,
+        pos.y + Math.random() * 1.5,
+        pos.z + (Math.random() - 0.5) * 0.8
+      );
+      scene.add(pMesh);
+
+      activeParticles.push({
+        mesh: pMesh,
+        vel: new THREE.Vector3(
+          (Math.random() - 0.5) * 14,
+          Math.random() * 12 + 4,
+          (Math.random() - 0.5) * 14
+        ),
+        life: 60
+      });
+    }
+  }
+
+  // ================= 🧑 スキンモデル定義 ＆ プレイヤー作成 =================
+  const SKINS = {
+    steve: { body: 0x00aaaa, pants: 0x0000aa, head: 0xdeb887, hat: 0x8b4513 },
+    alex: { body: 0x55aa55, pants: 0x885533, head: 0xffcc99, hat: 0xd35400 },
+    creeper: { body: 0x22aa22, pants: 0x118811, head: 0x33cc33, hat: 0x115511 },
+    knight: { body: 0x95a5a6, pants: 0x7f8c8d, head: 0xbdc3c7, hat: 0x2c3e50 },
+    enderman: { body: 0x111111, pants: 0x0a0a0a, head: 0x111111, hat: 0xaa00ff }
+  };
+
+  const otherPlayers = {};
+  const hitTargets = [];
+
+  function createPlayerMesh(p) {
+    const s = SKINS[p.skin] || SKINS.steve;
+    const group = new THREE.Group();
+
+    // 胴体
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.45), new THREE.MeshStandardMaterial({ color: s.body }));
+    body.position.y = 0.85;
+    group.add(body);
+
+    // ズボン/足
+    const legs = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.6, 0.44), new THREE.MeshStandardMaterial({ color: s.pants }));
+    legs.position.y = 0.3;
+    group.add(legs);
+
+    // 頭部
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: s.head }));
+    head.position.y = 1.7;
+    group.add(head);
+
+    // 帽子/髪
+    const hat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.2, 0.52), new THREE.MeshStandardMaterial({ color: s.hat }));
+    hat.position.y = 1.9;
+    group.add(hat);
+
+    group.position.set(p.x, p.y, p.z);
+    scene.add(group);
+
+    body.userData = { playerId: p.id };
+    head.userData = { playerId: p.id, isHeadshot: true };
+    hitTargets.push(body, head);
+
+    return { group, targetPos: new THREE.Vector3(p.x, p.y, p.z), targetRotY: p.rotY, skin: p.skin };
+  }
+
+  function createTracer(start, end) {
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([start, end]),
+      new THREE.LineBasicMaterial({ color: 0x55ffff, linewidth: 2 })
+    );
+    scene.add(line);
+    setTimeout(() => scene.remove(line), 50);
+  }
+
+  // ================= ロケット弾 ＆ 爆発 =================
+  const activeRockets = [];
+
+  function spawnRocket(startPos, direction) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.6), tntMat);
+    mesh.position.copy(startPos);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+    scene.add(mesh);
+    activeRockets.push({ mesh, dir: direction.clone().multiplyScalar(48), life: 180 });
+  }
+
+  function createExplosion(pos) {
+    spawnVoxelShatter(pos, 0xff3300, 30); // 爆発破片
+
+    const splashRadius = 7.5;
+    for (const pId in otherPlayers) {
+      const p = otherPlayers[pId];
+      const dist = pos.distanceTo(p.group.position.clone().add(new THREE.Vector3(0, 1, 0)));
+      if (dist <= splashRadius) {
+        const damage = Math.round((1 - dist / splashRadius) * 110) + 15;
+        socket.emit('hit', { targetId: pId, damage, weapon: 'TNT CANNON RPG' });
+      }
+    }
+
+    for (const wId in builtWalls) {
+      if (pos.distanceTo(builtWalls[wId].mesh.position) <= splashRadius + 2.0) {
+        socket.emit('damageWall', { wallId: wId, damage: 120 });
+      }
+    }
+
+    if (pos.distanceTo(camera.position) <= 5.0) {
+      velocityY = 24.0;
+      canJump = false;
+    }
+  }
+
+  // ================= 射撃 / 攻撃 =================
+  const raycaster = new THREE.Raycaster();
+
+  function shoot() {
+    const now = Date.now();
+    const w = WEAPONS[currentWeaponIndex];
+    if (now - lastShotTime < w.delay || isReloading) return;
+    if (!w.melee && w.curAmmo <= 0) { reload(); return; }
+
+    lastShotTime = now;
+    if (!w.melee) { w.curAmmo--; updateAmmoUI(); }
+
+    playSound(w.sound);
+
+    if (w.isRocket) {
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      const startPos = camera.position.clone().add(dir.clone().multiplyScalar(1.2));
+      spawnRocket(startPos, dir);
+      rpgMesh.position.z += 0.2;
+      setTimeout(() => rpgMesh.position.z -= 0.2, 80);
+      return;
+    }
+
+    if (w.melee) {
+      swordMesh.rotation.z += 1.2;
+      swordMesh.position.y += 0.2;
+      setTimeout(() => { swordMesh.rotation.z -= 1.2; swordMesh.position.y -= 0.2; }, 100);
+    } else {
+      gunMesh.position.z += 0.12;
+      camera.rotation.x += 0.015;
+      setTimeout(() => { gunMesh.position.z -= 0.12; camera.rotation.x -= 0.015; }, 50);
+    }
+
+    const startPos = camera.position.clone().add(new THREE.Vector3(0.2, -0.2, -0.5).applyEuler(camera.rotation));
+    const allTargets = [...hitTargets, ...Object.values(builtWalls).map(b => b.mesh)];
+
+    for (let i = 0; i < w.count; i++) {
+      const spreadX = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
+      const spreadY = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
+
+      raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
+      raycaster.far = w.range;
+
+      const intersects = raycaster.intersectObjects(allTargets);
+      let targetPoint = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
+
+      if (intersects.length > 0) {
+        const hit = intersects[0];
+        targetPoint = hit.point;
+        const hitObj = hit.object;
+
+        if (hitObj.userData.isWall) {
+          socket.emit('damageWall', { wallId: hitObj.userData.wallId, damage: w.damage });
+        } else if (hitObj.userData.playerId) {
+          if (!w.melee || hit.distance <= w.range) {
+            const targetId = hitObj.userData.playerId;
+            const damage = hitObj.userData.isHeadshot ? w.damage * 1.5 : w.damage;
+            socket.emit('hit', { targetId, damage: Math.round(damage), weapon: w.name });
+          }
+        }
+      }
+
+      if (!w.melee) createTracer(startPos, targetPoint);
+    }
+
+    if (w.auto && isShooting) setTimeout(shoot, w.delay);
+  }
+
+  socket.on('hitSuccess', () => {
+    playSound('hit');
+    const hm = document.getElementById('hit-marker');
+    hm.style.display = 'block';
+    setTimeout(() => hm.style.display = 'none', 100);
+  });
+
+  // ================= ソケット同期 =================
+  socket.on('init', (data) => {
+    myId = data.id;
+    if (data.players[myId]) {
+      const myP = data.players[myId];
+      camera.position.set(myP.x, myP.y + 1.6, myP.z);
+    }
+    for (const id in data.players) {
+      if (id !== myId) otherPlayers[id] = createPlayerMesh(data.players[id]);
+    }
+    for (const wId in data.buildings) spawnWallMesh(data.buildings[wId]);
+  });
+
+  socket.on('playerJoined', (p) => { otherPlayers[p.id] = createPlayerMesh(p); });
+
+  socket.on('playerMoved', (p) => {
+    if (otherPlayers[p.id]) {
+      otherPlayers[p.id].targetPos.set(p.x, p.y, p.z);
+      otherPlayers[p.id].targetRotY = p.rotY;
+    }
+  });
+
+  socket.on('playerLeft', (id) => {
+    if (otherPlayers[id]) {
+      scene.remove(otherPlayers[id].group);
+      delete otherPlayers[id];
+    }
+  });
+
+  socket.on('playerDamaged', (data) => {
+    if (data.id === myId) document.getElementById('hp-val').innerText = data.hp;
+  });
+
+  // 💥 敵撃破時の破砕爆発イベント
+  socket.on('playerKilled', (data) => {
+    const s = SKINS[data.skin] || SKINS.steve;
+    spawnVoxelShatter(new THREE.Vector3(data.x, data.y, data.z), s.body, 32);
+
+    const log = document.getElementById('kill-log');
+    const entry = document.createElement('div');
+    entry.innerText = `💥 [${data.weapon}] ${data.killerName} ➔ ${data.victimName}`;
+    log.appendChild(entry);
+    setTimeout(() => entry.remove(), 4000);
+
+    if (data.killerName === (document.getElementById('name-input').value || 'Player')) {
+      playSound('kill');
+      const kb = document.getElementById('kill-banner');
+      kb.classList.add('show');
+      setTimeout(() => kb.classList.remove('show'), 1500);
+    }
+  });
+
+  socket.on('playerRespawn', (p) => {
+    if (p.id === myId) {
+      camera.position.set(p.x, p.y + 1.6, p.z);
+      velocityY = 0;
+      document.getElementById('hp-val').innerText = '100';
+      WEAPONS[currentWeaponIndex].curAmmo = WEAPONS[currentWeaponIndex].maxAmmo;
+      updateAmmoUI();
+    } else if (otherPlayers[p.id]) {
+      otherPlayers[p.id].group.position.set(p.x, p.y, p.z);
+      otherPlayers[p.id].targetPos.set(p.x, p.y, p.z);
+    }
+  });
+
+  // ================= FPS操作 =================
   const controls = new THREE.PointerLockControls(camera, document.body);
   const blocker = document.getElementById('blocker');
 
   document.getElementById('start-btn').addEventListener('click', () => {
-    socket.emit('join', document.getElementById('name-input').value);
+    socket.emit('join', {
+      name: document.getElementById('name-input').value,
+      skin: selectedSkin
+    });
     controls.lock();
   });
 
@@ -481,7 +880,7 @@
       updateAmmoUI();
     }
     if (key === 'r' || e.code === 'KeyR') reload();
-    if (key === 'q' || e.code === 'KeyQ') tryBuildWall(); // 🧱 建築
+    if (key === 'q' || e.code === 'KeyQ') tryBuildWall();
 
     if (e.code === 'KeyW' || key === 'w') move.forward = true;
     if (e.code === 'KeyS' || key === 's') move.backward = true;
@@ -532,253 +931,7 @@
     camera.updateProjectionMatrix();
   }
 
-  // ================= 🏃 他プレイヤー（精密ヒットボックス＆滑らかな補間） =================
-  const otherPlayers = {};
-  const hitTargets = [];
-
-  function createPlayerMesh(p) {
-    const group = new THREE.Group();
-    // 胴体（スリムにして判定適正化）
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.3, 0.45), new THREE.MeshStandardMaterial({ color: p.color }));
-    body.position.y = 0.85;
-    group.add(body);
-
-    // 頭部
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    head.position.y = 1.75;
-    group.add(head);
-
-    group.position.set(p.x, p.y, p.z);
-    scene.add(group);
-
-    body.userData = { playerId: p.id };
-    head.userData = { playerId: p.id, isHeadshot: true };
-    hitTargets.push(body, head);
-
-    return {
-      group,
-      targetPos: new THREE.Vector3(p.x, p.y, p.z),
-      targetRotY: p.rotY
-    };
-  }
-
-  function createTracer(start, end) {
-    const material = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    scene.add(line);
-    setTimeout(() => scene.remove(line), 50);
-  }
-
-  // ================= ロケット弾 =================
-  const activeRockets = [];
-
-  function spawnRocket(startPos, direction) {
-    const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8),
-      new THREE.MeshBasicMaterial({ color: 0xff3300 })
-    );
-    mesh.position.copy(startPos);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-    scene.add(mesh);
-    activeRockets.push({ mesh, dir: direction.clone().multiplyScalar(48), life: 180 });
-  }
-
-  function createExplosion(pos) {
-    playSound('rpg_exp');
-
-    const expMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.9 })
-    );
-    expMesh.position.copy(pos);
-    scene.add(expMesh);
-
-    let scale = 1;
-    const interval = setInterval(() => {
-      scale += 0.8;
-      expMesh.scale.set(scale, scale, scale);
-      expMesh.material.opacity -= 0.12;
-      if (expMesh.material.opacity <= 0) {
-        clearInterval(interval);
-        scene.remove(expMesh);
-      }
-    }, 30);
-
-    // プレイヤー爆風判定
-    const splashRadius = 7.5;
-    for (const pId in otherPlayers) {
-      const p = otherPlayers[pId];
-      const dist = pos.distanceTo(p.group.position.clone().add(new THREE.Vector3(0, 1, 0)));
-      if (dist <= splashRadius) {
-        const damage = Math.round((1 - dist / splashRadius) * 110) + 15;
-        socket.emit('hit', { targetId: pId, damage, weapon: 'ROCKET LAUNCHER' });
-      }
-    }
-
-    // 建築物爆風判定
-    for (const wId in builtWalls) {
-      const wMesh = builtWalls[wId].mesh;
-      const dist = pos.distanceTo(wMesh.position);
-      if (dist <= splashRadius + 2.0) {
-        socket.emit('damageWall', { wallId: wId, damage: 120 });
-      }
-    }
-
-    // ロケットジャンプ
-    if (pos.distanceTo(camera.position) <= 5.0) {
-      velocityY = 24.0;
-      canJump = false;
-    }
-  }
-
-  // ================= 射撃 / 攻撃 =================
-  const raycaster = new THREE.Raycaster();
-
-  function shoot() {
-    const now = Date.now();
-    const w = WEAPONS[currentWeaponIndex];
-    if (now - lastShotTime < w.delay || isReloading) return;
-    if (!w.melee && w.curAmmo <= 0) { reload(); return; }
-
-    lastShotTime = now;
-    if (!w.melee) { w.curAmmo--; updateAmmoUI(); }
-
-    playSound(w.sound);
-
-    if (w.isRocket) {
-      const dir = new THREE.Vector3();
-      camera.getWorldDirection(dir);
-      const startPos = camera.position.clone().add(dir.clone().multiplyScalar(1.2));
-      spawnRocket(startPos, dir);
-
-      rpgMesh.position.z += 0.2;
-      setTimeout(() => rpgMesh.position.z -= 0.2, 80);
-      return;
-    }
-
-    if (w.melee) {
-      katanaMesh.rotation.z += 1.2;
-      katanaMesh.position.y += 0.2;
-      setTimeout(() => { katanaMesh.rotation.z -= 1.2; katanaMesh.position.y -= 0.2; }, 100);
-    } else {
-      gunMesh.position.z += 0.12;
-      camera.rotation.x += 0.015;
-      setTimeout(() => { gunMesh.position.z -= 0.12; camera.rotation.x -= 0.015; }, 50);
-    }
-
-    const startPos = camera.position.clone().add(new THREE.Vector3(0.2, -0.2, -0.5).applyEuler(camera.rotation));
-
-    // プレイヤーと建築壁の両方をターゲットにする
-    const allTargets = [...hitTargets, ...Object.values(builtWalls).map(b => b.mesh)];
-
-    for (let i = 0; i < w.count; i++) {
-      const spreadX = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
-      const spreadY = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
-
-      raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
-      raycaster.far = w.range;
-
-      const intersects = raycaster.intersectObjects(allTargets);
-      let targetPoint = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
-
-      if (intersects.length > 0) {
-        const hit = intersects[0];
-        targetPoint = hit.point;
-        const hitObj = hit.object;
-
-        if (hitObj.userData.isWall) {
-          // 壁への攻撃
-          socket.emit('damageWall', { wallId: hitObj.userData.wallId, damage: w.damage });
-        } else if (hitObj.userData.playerId) {
-          // プレイヤーへの攻撃（距離判定）
-          if (!w.melee || hit.distance <= w.range) {
-            const targetId = hitObj.userData.playerId;
-            const damage = hitObj.userData.isHeadshot ? w.damage * 1.5 : w.damage;
-            socket.emit('hit', { targetId, damage: Math.round(damage), weapon: w.name });
-          }
-        }
-      }
-
-      if (!w.melee) createTracer(startPos, targetPoint);
-    }
-
-    if (w.auto && isShooting) setTimeout(shoot, w.delay);
-  }
-
-  socket.on('hitSuccess', () => {
-    playSound('hit');
-    const hm = document.getElementById('hit-marker');
-    hm.style.display = 'block';
-    setTimeout(() => hm.style.display = 'none', 100);
-  });
-
-  // ================= ソケット同期 =================
-  socket.on('init', (data) => {
-    myId = data.id;
-    if (data.players[myId]) {
-      const myP = data.players[myId];
-      camera.position.set(myP.x, myP.y + 1.6, myP.z);
-    }
-    for (const id in data.players) {
-      if (id !== myId) otherPlayers[id] = createPlayerMesh(data.players[id]);
-    }
-    // 既存の建築物を復元
-    for (const wId in data.buildings) {
-      spawnWallMesh(data.buildings[wId]);
-    }
-  });
-
-  socket.on('playerJoined', (p) => { otherPlayers[p.id] = createPlayerMesh(p); });
-
-  socket.on('playerMoved', (p) => {
-    if (otherPlayers[p.id]) {
-      // 補間用の目標座標をセット
-      otherPlayers[p.id].targetPos.set(p.x, p.y, p.z);
-      otherPlayers[p.id].targetRotY = p.rotY;
-    }
-  });
-
-  socket.on('playerLeft', (id) => {
-    if (otherPlayers[id]) {
-      scene.remove(otherPlayers[id].group);
-      delete otherPlayers[id];
-    }
-  });
-
-  socket.on('playerDamaged', (data) => {
-    if (data.id === myId) document.getElementById('hp-val').innerText = data.hp;
-  });
-
-  socket.on('killLog', (data) => {
-    const log = document.getElementById('kill-log');
-    const entry = document.createElement('div');
-    entry.innerText = `💥 [${data.weapon}] ${data.killer} ➔ ${data.victim}`;
-    log.appendChild(entry);
-    setTimeout(() => entry.remove(), 4000);
-
-    if (data.killer === (document.getElementById('name-input').value || 'Player')) {
-      playSound('kill');
-      const kb = document.getElementById('kill-banner');
-      kb.classList.add('show');
-      setTimeout(() => kb.classList.remove('show'), 1500);
-    }
-  });
-
-  socket.on('playerRespawn', (p) => {
-    if (p.id === myId) {
-      camera.position.set(p.x, p.y + 1.6, p.z);
-      velocityY = 0;
-      document.getElementById('hp-val').innerText = '100';
-      WEAPONS[currentWeaponIndex].curAmmo = WEAPONS[currentWeaponIndex].maxAmmo;
-      updateAmmoUI();
-    } else if (otherPlayers[p.id]) {
-      otherPlayers[p.id].group.position.set(p.x, p.y, p.z);
-      otherPlayers[p.id].targetPos.set(p.x, p.y, p.z);
-    }
-  });
-
-  // ================= 🚀 メイン物理 ＆ 滑らかな描画ループ =================
+  // ================= メインループ ＆ パーティクル更新 =================
   let prevTime = performance.now();
   let lastSyncTime = 0;
 
@@ -789,15 +942,34 @@
     const delta = Math.min((time - prevTime) / 1000, 0.1);
     prevTime = time;
 
-    // --- 🏃 他プレイヤーの滑らかな補間移動（Lerp） ---
+    // 💥 物理ボクセル破片パーティクルの更新
+    for (let p = activeParticles.length - 1; p >= 0; p--) {
+      const pt = activeParticles[p];
+      pt.vel.y -= 25.0 * delta; // 重力
+      pt.mesh.position.addScaledVector(pt.vel, delta);
+      pt.mesh.rotation.x += 0.1;
+      pt.mesh.rotation.y += 0.1;
+      pt.life--;
+
+      if (pt.mesh.position.y <= 0.1) {
+        pt.mesh.position.y = 0.1;
+        pt.vel.set(0, 0, 0); // 地面で静止
+      }
+
+      if (pt.life <= 0) {
+        scene.remove(pt.mesh);
+        activeParticles.splice(p, 1);
+      }
+    }
+
+    // 他プレイヤー補間
     for (const id in otherPlayers) {
       const p = otherPlayers[id];
-      // 0.25 の速度で滑らかに吸い付くように補間
       p.group.position.lerp(p.targetPos, 0.25);
       p.group.rotation.y = THREE.MathUtils.lerp(p.group.rotation.y, p.targetRotY, 0.25);
     }
 
-    // --- ロケット弾更新 ---
+    // ロケット弾更新
     for (let r = activeRockets.length - 1; r >= 0; r--) {
       const rkt = activeRockets[r];
       rkt.mesh.position.addScaledVector(rkt.dir, delta);
@@ -805,7 +977,6 @@
 
       let hit = false;
       const rPos = rkt.mesh.position;
-
       for (const b of boxes) {
         if (rPos.x >= b.minX && rPos.x <= b.maxX && rPos.y >= b.minY && rPos.y <= b.maxY && rPos.z >= b.minZ && rPos.z <= b.maxZ) {
           hit = true; break;
@@ -893,7 +1064,7 @@
         }
       }
 
-      // 着地判定（床＋建築壁＋城）
+      // 着地判定
       let groundY = 0;
       const px = camera.position.x;
       const pz = camera.position.z;
@@ -912,13 +1083,12 @@
         canJump = true;
       }
 
-      // 落下セーフティ
       if (camera.position.y < -10) {
         camera.position.set(0, 10, 80);
         velocityY = 0;
       }
 
-      // サーバー同期（20回/秒に最適化して負荷と通信感覚を適正化）
+      // サーバー同期（20回/秒）
       if (time - lastSyncTime > 50) {
         lastSyncTime = time;
         socket.emit('playerMove', {
