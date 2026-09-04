@@ -10,13 +10,13 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static('public'));
 
 const players = {};
-const buildings = {}; // 建築オブジェクト一覧
+const buildings = {};
 
 const SPAWN_POINTS = [
   { x: 0, y: 2, z: 80 },
   { x: 60, y: 2, z: 60 },
   { x: -60, y: 2, z: 60 },
-  { x: 0, y: 15, z: -50 } // 城の屋上
+  { x: 0, y: 16, z: -40 } // 城の最上階
 ];
 
 function getRandomSpawn() {
@@ -24,17 +24,16 @@ function getRandomSpawn() {
 }
 
 io.on('connection', (socket) => {
-  socket.on('join', (name) => {
+  socket.on('join', (data) => {
     const spawn = getRandomSpawn();
     players[socket.id] = {
       id: socket.id,
-      name: name ? name.substring(0, 10) : 'Player',
+      name: data.name ? data.name.substring(0, 10) : 'Player',
+      skin: data.skin || 'steve',
       x: spawn.x, y: spawn.y, z: spawn.z, rotY: 0,
-      hp: 100, kills: 0, deaths: 0,
-      color: `hsl(${Math.floor(Math.random() * 360)}, 80%, 50%)`
+      hp: 100, kills: 0, deaths: 0
     };
 
-    // 初期化（既存プレイヤー + 建築物一覧を送る）
     socket.emit('init', { id: socket.id, players, buildings });
     socket.broadcast.emit('playerJoined', players[socket.id]);
   });
@@ -47,7 +46,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 🧱 建築の設置
   socket.on('buildWall', (wallData) => {
     const wallId = `wall_${Date.now()}_${Math.random()}`;
     buildings[wallId] = {
@@ -55,12 +53,11 @@ io.on('connection', (socket) => {
       ownerId: socket.id,
       x: wallData.x, y: wallData.y, z: wallData.z,
       rotY: wallData.rotY,
-      hp: 150 // 壁の耐久力
+      hp: 150
     };
     io.emit('wallBuilt', buildings[wallId]);
   });
 
-  // 🧱 建築物へのダメージ
   socket.on('damageWall', (data) => {
     const wall = buildings[data.wallId];
     if (wall) {
@@ -87,7 +84,15 @@ io.on('connection', (socket) => {
         target.deaths++;
         attacker.kills++;
 
-        io.emit('killLog', { killer: attacker.name, victim: target.name, weapon: data.weapon });
+        // 撃破位置・スキン情報を全員に通知（ボクセル粉砕エフェクト用）
+        io.emit('playerKilled', {
+          victimId: target.id,
+          killerName: attacker.name,
+          victimName: target.name,
+          weapon: data.weapon,
+          x: target.x, y: target.y, z: target.z,
+          skin: target.skin
+        });
 
         setTimeout(() => {
           if (players[target.id]) {
@@ -112,5 +117,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Castle Warfare Server running on port ${PORT}`);
+  console.log(`Minecraft Voxel Warzone Server running on port ${PORT}`);
 });
