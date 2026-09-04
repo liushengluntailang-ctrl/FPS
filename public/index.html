@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>CYBER STRIKE 3D - FIXED</title>
+  <title>CYBER CASTLE 3D - WARZONE</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
@@ -44,6 +44,7 @@
     #kill-banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
 
     #hud { position: absolute; bottom: 25px; left: 25px; color: #fff; font-size: 22px; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; z-index: 10; }
+    #build-hud { color: #f1c40f; font-size: 18px; margin-top: 5px; }
     #weapon-hud { position: absolute; bottom: 25px; right: 25px; color: #00ffcc; font-size: 24px; font-weight: bold; pointer-events: none; text-align: right; text-shadow: 2px 2px 4px #000; z-index: 10; }
     #ammo-hud { font-size: 38px; color: #fff; }
     #kill-log { position: absolute; top: 20px; right: 20px; color: #ffeb3b; font-size: 15px; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 3px #000; z-index: 10; }
@@ -59,9 +60,8 @@
     }
     button {
       padding: 14px 40px; font-size: 22px; font-weight: bold; background: #00ffcc;
-      border: none; border-radius: 8px; cursor: pointer; color: #000; transition: transform 0.1s;
+      border: none; border-radius: 8px; cursor: pointer; color: #000;
     }
-    button:hover { transform: scale(1.05); background: #33ffd6; }
   </style>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -82,28 +82,29 @@
 
 <div id="hud">
   <div>❤️ HP: <span id="hp-val">100</span></div>
-  <div style="font-size: 15px; color: #f1c40f; margin-top: 5px;">⚡ 黄色い床: 大ジャンプ台</div>
+  <div id="build-hud">🧱 建築: [Q] キーで目の前に壁設置 (HP: 150)</div>
+  <div style="font-size: 14px; color: #00ffcc; margin-top: 3px;">⚡ 黄色い床: 大ジャンプ台</div>
 </div>
 
 <div id="weapon-hud">
   <div id="cur-weapon">1: ASSAULT RIFLE</div>
   <div id="ammo-hud"><span id="ammo-cur">30</span> / <span id="ammo-max">30</span></div>
-  <div style="font-size: 13px; color: #aaa;">[1-6] 武器切替 / [R] リロード / [6] ロケラン</div>
+  <div style="font-size: 13px; color: #aaa;">[1-6] 武器 / [R] リロード / [Q] 建築壁</div>
 </div>
 
 <div id="kill-log"></div>
 
 <div id="blocker">
-  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">⚔️ CYBER STRIKE 3D</h1>
-  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | R: リロード | 1~6: 武器切替</p>
+  <h1 style="color: #00ffcc; letter-spacing: 5px; font-size: 44px; margin-bottom: 5px;">🏰 CYBER CASTLE 3D</h1>
+  <p style="color: #ccc; margin-bottom: 20px;">WASD: 移動 | SPACE: ジャンプ | SHIFT: ダッシュ | Q: 壁建築 | 1~6: 武器</p>
   <input type="text" id="name-input" placeholder="プレイヤー名を入力..." maxlength="10">
-  <button id="start-btn">戦場へ降下する (クリック)</button>
+  <button id="start-btn">城塞バトルに参加 (クリック)</button>
 </div>
 
 <script>
   const socket = io();
 
-  // ================= 🔊 Web Audio 音声エンジン =================
+  // ================= 🔊 音声エンジン =================
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
   function playSound(type) {
@@ -170,6 +171,16 @@
       gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
       osc.connect(gain); gain.connect(audioCtx.destination);
       osc.start(now); osc.stop(now + 0.6);
+    } else if (type === 'build') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.setValueAtTime(450, now + 0.05);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.1);
     } else if (type === 'hit') {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -202,7 +213,7 @@
     }
   }
 
-  // ================= 武器データ ＆ 弾薬 =================
+  // ================= 武器データ =================
   const WEAPONS = {
     1: { name: 'ASSAULT RIFLE', sound: 'ar', damage: 24, delay: 120, range: 140, auto: true, count: 1, spread: 0.015, maxAmmo: 30, curAmmo: 30, reloadTime: 1200 },
     2: { name: 'SHOTGUN', sound: 'sg', damage: 16, delay: 750, range: 35, auto: false, count: 8, spread: 0.08, maxAmmo: 6, curAmmo: 6, reloadTime: 1800 },
@@ -214,6 +225,7 @@
 
   let currentWeaponIndex = 1;
   let lastShotTime = 0;
+  let lastBuildTime = 0;
   let isAiming = false;
   let isShooting = false;
   let isReloading = false;
@@ -243,7 +255,7 @@
   scene.fog = new THREE.Fog(0x6ca6cd, 60, 320);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 1.6, 60);
+  camera.position.set(0, 1.6, 80);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -256,7 +268,7 @@
   sunLight.position.set(100, 150, 80);
   scene.add(sunLight);
 
-  // ================= 武器モデル =================
+  // 武器モデル
   const weaponHolder = new THREE.Group();
   camera.add(weaponHolder);
   scene.add(camera);
@@ -293,13 +305,13 @@
     rpgMesh.visible = w.isRocket && !isAiming;
   }
 
-  // ================= 巨大立体マップ ＆ コリジョン =================
+  // ================= 🏰 巨大立体「サイバー城」 ＆ マップ構築 =================
   const boxes = [];
   const jumpPads = [];
 
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(260, 260),
-    new THREE.MeshStandardMaterial({ color: 0x7f8c8d, roughness: 0.8 })
+    new THREE.PlaneGeometry(280, 280),
+    new THREE.MeshStandardMaterial({ color: 0x5a6577, roughness: 0.8 })
   );
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
@@ -327,46 +339,113 @@
     jumpPads.push({ x, z, y: y + 0.25, size: 3.0 });
   }
 
-  // 中央要塞タワー
-  addObstacle(0, 0, 0, 36, 6, 36, 0x34495e);
-  addObstacle(0, 6, 0, 24, 6, 24, 0x2c3e50);
-  addObstacle(0, 12, 0, 12, 6, 12, 0x1abc9c);
-  addJumpPad(0, 0, 24);
-  addJumpPad(0, 0, -24);
-  addJumpPad(24, 0, 0);
-  addJumpPad(-24, 0, 0);
+  // --- 🏰 巨大な城（Castle） ---
+  const castleCenterZ = -40;
 
-  // 空中連絡橋
-  addObstacle(0, 11, 45, 8, 1, 50, 0x7f8c8d);
-  addObstacle(0, 11, -45, 8, 1, 50, 0x7f8c8d);
+  // 城壁（外郭・回廊）
+  addObstacle(0, 0, castleCenterZ + 30, 24, 8, 4, 0x3d4852); // 正門壁（左）
+  addObstacle(0, 0, castleCenterZ - 30, 60, 8, 4, 0x3d4852); // 北城壁
+  addObstacle(30, 0, castleCenterZ, 4, 8, 64, 0x3d4852);     // 東城壁
+  addObstacle(-30, 0, castleCenterZ, 4, 8, 64, 0x3d4852);    // 西城壁
 
-  // 四隅の要塞
-  addObstacle(70, 0, 70, 16, 14, 16, 0x8e44ad);
-  addJumpPad(70, 0, 56);
-  addObstacle(-70, 0, -70, 16, 14, 16, 0x2980b9);
-  addJumpPad(-70, 0, -56);
-  addObstacle(70, 0, -70, 16, 14, 16, 0xd35400);
-  addJumpPad(70, 0, -56);
-  addObstacle(-70, 0, 70, 16, 14, 16, 0x27ae60);
-  addJumpPad(-70, 0, 56);
+  // 城の4隅の防衛タワー
+  addObstacle(30, 0, castleCenterZ + 30, 10, 14, 10, 0x2c3e50);
+  addObstacle(-30, 0, castleCenterZ + 30, 10, 14, 10, 0x2c3e50);
+  addObstacle(30, 0, castleCenterZ - 30, 10, 14, 10, 0x2c3e50);
+  addObstacle(-30, 0, castleCenterZ - 30, 10, 14, 10, 0x2c3e50);
 
-  // コンテナ迷路
-  const colors = [0xe74c3c, 0x3498db, 0xf39c12, 0x2ecc71, 0x95a5a6];
-  for (let i = 0; i < 28; i++) {
-    const rx = (Math.random() - 0.5) * 180;
-    const rz = (Math.random() - 0.5) * 180;
-    if (Math.abs(rx) > 25 || Math.abs(rz) > 25) {
-      addObstacle(rx, 0, rz, 6 + Math.random() * 8, 4 + Math.random() * 5, 6 + Math.random() * 8, colors[i % colors.length]);
-    }
-  }
+  // 城の中央天守閣（3段構造・高さ20m）
+  addObstacle(0, 0, castleCenterZ, 26, 8, 26, 0x1f2a38);   // 天守下段
+  addObstacle(0, 8, castleCenterZ, 18, 7, 18, 0x2e4053);   // 天守中段
+  addObstacle(0, 15, castleCenterZ, 10, 5, 10, 0xd35400);  // 最上階天守スナイパー台
+
+  // 城へ侵入・登攀用ジャンプ台
+  addJumpPad(0, 0, castleCenterZ + 38);  // 正門突破ジャンプ
+  addJumpPad(0, 0, castleCenterZ + 18);  // 天守へ登るジャンプ
+  addJumpPad(30, 0, castleCenterZ + 18); // 東タワーへ
+  addJumpPad(-30, 0, castleCenterZ + 18);// 西タワーへ
+
+  // 周辺の砦 ＆ 遮蔽物
+  addObstacle(60, 0, 40, 12, 6, 12, 0x8e44ad);
+  addJumpPad(60, 0, 40);
+  addObstacle(-60, 0, 40, 12, 6, 12, 0x2980b9);
+  addJumpPad(-60, 0, 40);
 
   // 外周防壁
-  addObstacle(0, 0, 128, 260, 14, 4, 0x1f2c39);
-  addObstacle(0, 0, -128, 260, 14, 4, 0x1f2c39);
-  addObstacle(128, 0, 0, 4, 14, 260, 0x1f2c39);
-  addObstacle(-128, 0, 0, 4, 14, 260, 0x1f2c39);
+  addObstacle(0, 0, 138, 280, 16, 4, 0x1f2c39);
+  addObstacle(0, 0, -138, 280, 16, 4, 0x1f2c39);
+  addObstacle(138, 0, 0, 4, 16, 280, 0x1f2c39);
+  addObstacle(-138, 0, 0, 4, 16, 280, 0x1f2c39);
 
-  // ================= 🛠️ 完璧に修正されたキーボード＆操作管理 =================
+  // ================= 🧱 リアルタイム建築システム =================
+  const builtWalls = {}; // id -> { mesh, boxIndex, boxData }
+
+  function spawnWallMesh(wallData) {
+    const wallGeo = new THREE.BoxGeometry(5.0, 3.5, 0.6);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xd35400, roughness: 0.7 });
+    const mesh = new THREE.Mesh(wallGeo, wallMat);
+    mesh.position.set(wallData.x, wallData.y + 1.75, wallData.z);
+    mesh.rotation.y = wallData.rotY;
+    scene.add(mesh);
+
+    // 当たり判定用（AABB簡易登録）
+    const boxData = {
+      minX: wallData.x - 2.8, maxX: wallData.x + 2.8,
+      minY: wallData.y, maxY: wallData.y + 3.5,
+      minZ: wallData.z - 2.8, maxZ: wallData.z + 2.8
+    };
+    boxes.push(boxData);
+    const boxIndex = boxes.length - 1;
+
+    mesh.userData = { isWall: true, wallId: wallData.id };
+    builtWalls[wallData.id] = { mesh, boxIndex, boxData };
+  }
+
+  function tryBuildWall() {
+    const now = Date.now();
+    if (now - lastBuildTime < 400) return; // 建築クールダウン
+    lastBuildTime = now;
+
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    dir.y = 0; dir.normalize();
+
+    // 目の前3.5mに壁を設置
+    const buildPos = camera.position.clone().add(dir.clone().multiplyScalar(3.5));
+    const groundY = camera.position.y - 1.6;
+
+    socket.emit('buildWall', {
+      x: Math.round(buildPos.x * 2) / 2,
+      y: Math.max(0, Math.round(groundY * 2) / 2),
+      z: Math.round(buildPos.z * 2) / 2,
+      rotY: camera.rotation.y
+    });
+
+    playSound('build');
+  }
+
+  socket.on('wallBuilt', (wallData) => {
+    spawnWallMesh(wallData);
+  });
+
+  socket.on('wallDamaged', (data) => {
+    if (builtWalls[data.wallId]) {
+      builtWalls[data.wallId].mesh.material.color.setHex(0xe74c3c); // 被弾で赤く光る
+    }
+  });
+
+  socket.on('wallDestroyed', (wallId) => {
+    if (builtWalls[wallId]) {
+      scene.remove(builtWalls[wallId].mesh);
+      // コリジョン無効化
+      const b = builtWalls[wallId].boxData;
+      b.minY = -999; b.maxY = -999;
+      delete builtWalls[wallId];
+      playSound('rpg_exp');
+    }
+  });
+
+  // ================= 操作 ＆ 入力管理 =================
   const controls = new THREE.PointerLockControls(camera, document.body);
   const blocker = document.getElementById('blocker');
 
@@ -390,8 +469,6 @@
     toggleADS(false);
     resetKeys();
   });
-
-  // フォーカスが外れた時の暴走を防止
   window.addEventListener('blur', resetKeys);
 
   window.addEventListener('keydown', (e) => {
@@ -404,8 +481,8 @@
       updateAmmoUI();
     }
     if (key === 'r' || e.code === 'KeyR') reload();
+    if (key === 'q' || e.code === 'KeyQ') tryBuildWall(); // 🧱 建築
 
-    // どのキー配列・全角半角でも確実に反応
     if (e.code === 'KeyW' || key === 'w') move.forward = true;
     if (e.code === 'KeyS' || key === 's') move.backward = true;
     if (e.code === 'KeyA' || key === 'a') move.left = true;
@@ -455,18 +532,20 @@
     camera.updateProjectionMatrix();
   }
 
-  // ================= プレイヤー当たり判定 =================
+  // ================= 🏃 他プレイヤー（精密ヒットボックス＆滑らかな補間） =================
   const otherPlayers = {};
   const hitTargets = [];
 
   function createPlayerMesh(p) {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 0.6), new THREE.MeshStandardMaterial({ color: p.color }));
-    body.position.y = 0.9;
+    // 胴体（スリムにして判定適正化）
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.3, 0.45), new THREE.MeshStandardMaterial({ color: p.color }));
+    body.position.y = 0.85;
     group.add(body);
 
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    head.position.y = 1.9;
+    // 頭部
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    head.position.y = 1.75;
     group.add(head);
 
     group.position.set(p.x, p.y, p.z);
@@ -476,7 +555,11 @@
     head.userData = { playerId: p.id, isHeadshot: true };
     hitTargets.push(body, head);
 
-    return group;
+    return {
+      group,
+      targetPos: new THREE.Vector3(p.x, p.y, p.z),
+      targetRotY: p.rotY
+    };
   }
 
   function createTracer(start, end) {
@@ -487,30 +570,27 @@
     setTimeout(() => scene.remove(line), 50);
   }
 
-  // ================= ロケット弾 ＆ 爆発 =================
+  // ================= ロケット弾 =================
   const activeRockets = [];
 
   function spawnRocket(startPos, direction) {
-    const rocketGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8);
-    const rocketMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
-    const mesh = new THREE.Mesh(rocketGeo, rocketMat);
+    const mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff3300 })
+    );
     mesh.position.copy(startPos);
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
     scene.add(mesh);
-
-    activeRockets.push({
-      mesh,
-      dir: direction.clone().multiplyScalar(45),
-      life: 180
-    });
+    activeRockets.push({ mesh, dir: direction.clone().multiplyScalar(48), life: 180 });
   }
 
   function createExplosion(pos) {
     playSound('rpg_exp');
 
-    const expGeo = new THREE.SphereGeometry(1, 16, 16);
-    const expMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.9 });
-    const expMesh = new THREE.Mesh(expGeo, expMat);
+    const expMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.9 })
+    );
     expMesh.position.copy(pos);
     scene.add(expMesh);
 
@@ -525,18 +605,28 @@
       }
     }, 30);
 
+    // プレイヤー爆風判定
     const splashRadius = 7.5;
     for (const pId in otherPlayers) {
-      const pMesh = otherPlayers[pId];
-      const dist = pos.distanceTo(pMesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
+      const p = otherPlayers[pId];
+      const dist = pos.distanceTo(p.group.position.clone().add(new THREE.Vector3(0, 1, 0)));
       if (dist <= splashRadius) {
         const damage = Math.round((1 - dist / splashRadius) * 110) + 15;
         socket.emit('hit', { targetId: pId, damage, weapon: 'ROCKET LAUNCHER' });
       }
     }
 
-    const myDist = pos.distanceTo(camera.position);
-    if (myDist <= 5.0) {
+    // 建築物爆風判定
+    for (const wId in builtWalls) {
+      const wMesh = builtWalls[wId].mesh;
+      const dist = pos.distanceTo(wMesh.position);
+      if (dist <= splashRadius + 2.0) {
+        socket.emit('damageWall', { wallId: wId, damage: 120 });
+      }
+    }
+
+    // ロケットジャンプ
+    if (pos.distanceTo(camera.position) <= 5.0) {
       velocityY = 24.0;
       canJump = false;
     }
@@ -579,6 +669,9 @@
 
     const startPos = camera.position.clone().add(new THREE.Vector3(0.2, -0.2, -0.5).applyEuler(camera.rotation));
 
+    // プレイヤーと建築壁の両方をターゲットにする
+    const allTargets = [...hitTargets, ...Object.values(builtWalls).map(b => b.mesh)];
+
     for (let i = 0; i < w.count; i++) {
       const spreadX = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
       const spreadY = (Math.random() - 0.5) * (isAiming ? w.spread * 0.2 : w.spread);
@@ -586,17 +679,24 @@
       raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
       raycaster.far = w.range;
 
-      const intersects = raycaster.intersectObjects(hitTargets);
+      const intersects = raycaster.intersectObjects(allTargets);
       let targetPoint = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
 
       if (intersects.length > 0) {
         const hit = intersects[0];
-        if (!w.melee || hit.distance <= w.range) {
-          targetPoint = hit.point;
-          const hitObj = hit.object;
-          const targetId = hitObj.userData.playerId;
-          const damage = hitObj.userData.isHeadshot ? w.damage * 1.5 : w.damage;
-          socket.emit('hit', { targetId, damage: Math.round(damage), weapon: w.name });
+        targetPoint = hit.point;
+        const hitObj = hit.object;
+
+        if (hitObj.userData.isWall) {
+          // 壁への攻撃
+          socket.emit('damageWall', { wallId: hitObj.userData.wallId, damage: w.damage });
+        } else if (hitObj.userData.playerId) {
+          // プレイヤーへの攻撃（距離判定）
+          if (!w.melee || hit.distance <= w.range) {
+            const targetId = hitObj.userData.playerId;
+            const damage = hitObj.userData.isHeadshot ? w.damage * 1.5 : w.damage;
+            socket.emit('hit', { targetId, damage: Math.round(damage), weapon: w.name });
+          }
         }
       }
 
@@ -613,7 +713,7 @@
     setTimeout(() => hm.style.display = 'none', 100);
   });
 
-  // ================= ソケット通信 =================
+  // ================= ソケット同期 =================
   socket.on('init', (data) => {
     myId = data.id;
     if (data.players[myId]) {
@@ -623,20 +723,25 @@
     for (const id in data.players) {
       if (id !== myId) otherPlayers[id] = createPlayerMesh(data.players[id]);
     }
+    // 既存の建築物を復元
+    for (const wId in data.buildings) {
+      spawnWallMesh(data.buildings[wId]);
+    }
   });
 
   socket.on('playerJoined', (p) => { otherPlayers[p.id] = createPlayerMesh(p); });
 
   socket.on('playerMoved', (p) => {
     if (otherPlayers[p.id]) {
-      otherPlayers[p.id].position.set(p.x, p.y, p.z);
-      otherPlayers[p.id].rotation.y = p.rotY;
+      // 補間用の目標座標をセット
+      otherPlayers[p.id].targetPos.set(p.x, p.y, p.z);
+      otherPlayers[p.id].targetRotY = p.rotY;
     }
   });
 
   socket.on('playerLeft', (id) => {
     if (otherPlayers[id]) {
-      scene.remove(otherPlayers[id]);
+      scene.remove(otherPlayers[id].group);
       delete otherPlayers[id];
     }
   });
@@ -668,12 +773,14 @@
       WEAPONS[currentWeaponIndex].curAmmo = WEAPONS[currentWeaponIndex].maxAmmo;
       updateAmmoUI();
     } else if (otherPlayers[p.id]) {
-      otherPlayers[p.id].position.set(p.x, p.y, p.z);
+      otherPlayers[p.id].group.position.set(p.x, p.y, p.z);
+      otherPlayers[p.id].targetPos.set(p.x, p.y, p.z);
     }
   });
 
-  // ================= 🚀 100% 正確な水平ベクトル移動物理エンジン =================
+  // ================= 🚀 メイン物理 ＆ 滑らかな描画ループ =================
   let prevTime = performance.now();
+  let lastSyncTime = 0;
 
   function animate() {
     requestAnimationFrame(animate);
@@ -682,7 +789,15 @@
     const delta = Math.min((time - prevTime) / 1000, 0.1);
     prevTime = time;
 
-    // ロケット弾の飛翔更新
+    // --- 🏃 他プレイヤーの滑らかな補間移動（Lerp） ---
+    for (const id in otherPlayers) {
+      const p = otherPlayers[id];
+      // 0.25 の速度で滑らかに吸い付くように補間
+      p.group.position.lerp(p.targetPos, 0.25);
+      p.group.rotation.y = THREE.MathUtils.lerp(p.group.rotation.y, p.targetRotY, 0.25);
+    }
+
+    // --- ロケット弾更新 ---
     for (let r = activeRockets.length - 1; r >= 0; r--) {
       const rkt = activeRockets[r];
       rkt.mesh.position.addScaledVector(rkt.dir, delta);
@@ -708,16 +823,12 @@
     if (controls.isLocked) {
       const speed = (move.sprint ? 20 : 11) * delta;
 
-      // 1. カメラの視線から「真の水平進行方向」を完璧に抽出 (Y成分をカット)
       const forward = new THREE.Vector3();
       camera.getWorldDirection(forward);
       forward.y = 0;
       forward.normalize();
-
-      // 水平右方向
       const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).negate();
 
-      // 2. 移動入力の合成（同時押しに対応）
       let inputZ = (move.forward ? 1 : 0) - (move.backward ? 1 : 0);
       let inputX = (move.right ? 1 : 0) - (move.left ? 1 : 0);
 
@@ -735,7 +846,7 @@
       const playerHeight = 1.8;
       const feetY = camera.position.y - 1.6;
 
-      // 3. X軸の壁ずり移動と判定
+      // X軸壁ずり
       camera.position.x += deltaX;
       for (const b of boxes) {
         if (feetY < b.maxY - 0.2 && feetY + playerHeight > b.minY) {
@@ -751,7 +862,7 @@
         }
       }
 
-      // 4. Z軸の壁ずり移動と判定
+      // Z軸壁ずり
       camera.position.z += deltaZ;
       for (const b of boxes) {
         if (feetY < b.maxY - 0.2 && feetY + playerHeight > b.minY) {
@@ -767,7 +878,7 @@
         }
       }
 
-      // 5. 重力 ＆ ジャンプ
+      // 重力 ＆ ジャンプ
       velocityY -= 30.0 * delta;
       camera.position.y += velocityY * delta;
 
@@ -782,7 +893,7 @@
         }
       }
 
-      // 足場着地判定
+      // 着地判定（床＋建築壁＋城）
       let groundY = 0;
       const px = camera.position.x;
       const pz = camera.position.z;
@@ -803,17 +914,20 @@
 
       // 落下セーフティ
       if (camera.position.y < -10) {
-        camera.position.set(0, 10, 60);
+        camera.position.set(0, 10, 80);
         velocityY = 0;
       }
 
-      // サーバー同期
-      socket.emit('playerMove', {
-        x: camera.position.x,
-        y: camera.position.y - 1.6,
-        z: camera.position.z,
-        rotY: camera.rotation.y
-      });
+      // サーバー同期（20回/秒に最適化して負荷と通信感覚を適正化）
+      if (time - lastSyncTime > 50) {
+        lastSyncTime = time;
+        socket.emit('playerMove', {
+          x: camera.position.x,
+          y: camera.position.y - 1.6,
+          z: camera.position.z,
+          rotY: camera.rotation.y
+        });
+      }
     }
 
     renderer.render(scene, camera);
