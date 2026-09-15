@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Minecraft PvP Online (Render)</title>
+  <title>Minecraft PvP Online</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -48,7 +48,7 @@
     input:focus, select:focus { outline: none; border-color: #2ecc71; }
     button { background: #27ae60; cursor: pointer; border: none; font-weight: bold; transition: 0.2s; }
     button:hover { background: #2ecc71; }
-    .status-msg { font-size: 14px; text-align: center; margin-top: 4px; font-weight: bold; }
+    .status-msg { font-size: 14px; text-align: center; margin-top: 4px; font-weight: bold; color: #2ecc71; }
 
     .room-list {
       display: grid;
@@ -108,15 +108,13 @@
   <div id="lobby-screen">
     <div class="lobby-box">
       <h1>MINECRAFT PvP ONLINE</h1>
-      <div class="input-group">
-        <input type="text" id="server-url" placeholder="https://あなたのアプリ.onrender.com" style="flex: 2;">
-        <input type="text" id="player-name" placeholder="プレイヤー名" value="Steve" style="flex: 1;">
-        <button id="btn-connect">接続する</button>
+      <div id="conn-status" class="status-msg">🟢 サーバー接続中...</div>
+      <div class="input-group" style="margin-top: 12px;">
+        <input type="text" id="player-name" placeholder="プレイヤー名を入力" value="Steve" style="flex: 1;">
       </div>
-      <div id="conn-status" class="status-msg" style="color: #f1c40f;">※RenderのURLを入力して「接続する」を押してください</div>
     </div>
 
-    <div class="lobby-box" id="rooms-section" style="display: none;">
+    <div class="lobby-box" id="rooms-section">
       <h3>部屋を新規作成</h3>
       <div class="input-group">
         <input type="text" id="new-room-name" placeholder="部屋の名前" style="flex: 2;">
@@ -154,10 +152,12 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
   <script>
-    let socket;
+    // ★自分自身のサーバーへ自動接続（URL入力不要！）
+    const socket = io({ transports: ["websocket", "polling"] });
+
     let myPlayer = null;
     let currentRoom = null;
     const otherPlayers = {};
@@ -167,17 +167,11 @@
     const blockColors = { 2: 0x55a832, 3: 0x7f8c8d, 4: 0x8b5a2b };
 
     const lobbyScreen = document.getElementById("lobby-screen");
-    const roomsSection = document.getElementById("rooms-section");
     const roomListDiv = document.getElementById("room-list");
     const hpBar = document.getElementById("hp-bar");
     const roomInfo = document.getElementById("room-info");
     const gameStatus = document.getElementById("game-status");
     const connStatus = document.getElementById("conn-status");
-    const serverUrlInput = document.getElementById("server-url");
-
-    if (localStorage.getItem("renderServerUrl")) {
-      serverUrlInput.value = localStorage.getItem("renderServerUrl");
-    }
 
     window.addEventListener("keydown", (e) => {
       if (["1", "2", "3", "4"].includes(e.key)) {
@@ -188,16 +182,8 @@
       }
     });
 
-    document.getElementById("btn-connect").addEventListener("click", () => {
-      let url = serverUrlInput.value.trim();
-      if (!url) return alert("RenderのURLを入力してください！");
-      if (url.endsWith("/")) url = url.slice(0, -1);
-      localStorage.setItem("renderServerUrl", url);
-      connect(url);
-    });
-
     document.getElementById("btn-create-room").addEventListener("click", () => {
-      if (!socket || !socket.connected) return alert("サーバーに接続されていません！");
+      if (!socket.connected) return alert("サーバーに接続されていません！");
       const name = document.getElementById("new-room-name").value.trim();
       const mode = document.getElementById("new-room-mode").value;
       socket.emit("createRoom", { name, mode });
@@ -205,96 +191,84 @@
 
     document.getElementById("btn-leave").addEventListener("click", () => {
       document.exitPointerLock();
-      if (socket) socket.emit("leaveRoom");
+      socket.emit("leaveRoom");
       cleanupGameWorld();
       lobbyScreen.style.display = "flex";
     });
 
-    function connect(url) {
-      connStatus.style.color = "#f1c40f";
-      connStatus.innerText = "🚀 Renderサーバーに接続中... (初回起動時は数十秒待つ場合があります)";
+    socket.on("connect", () => {
+      connStatus.innerText = "🟢 サーバーに接続完了！";
+      socket.emit("getRooms");
+    });
 
-      socket = io(url, {
-        transports: ["websocket", "polling"],
-        reconnection: true
+    socket.on("connect_error", () => {
+      connStatus.style.color = "#e74c3c";
+      connStatus.innerText = "🔴 接続中... (初回起動時は少し時間がかかります)";
+    });
+
+    socket.on("roomList", (rooms) => {
+      roomListDiv.innerHTML = "";
+      if (rooms.length === 0) {
+        roomListDiv.innerHTML = "<p style='color: #aaa;'>部屋がありません。新しく作成してください！</p>";
+        return;
+      }
+      rooms.forEach(r => {
+        const card = document.createElement("div");
+        card.className = "room-card";
+        card.innerHTML = `
+          <div>
+            <strong style="font-size: 16px;">${r.name}</strong>
+            <div><span class="mode-tag mode-${r.mode}">${r.mode.toUpperCase()}</span></div>
+            <div style="font-size: 13px; color: #ccc; margin: 8px 0;">参加者: ${r.playerCount}人</div>
+          </div>
+          <button onclick="joinRoom('${r.id}')">参加する</button>
+        `;
+        roomListDiv.appendChild(card);
       });
+    });
 
-      socket.on("connect", () => {
-        connStatus.style.color = "#2ecc71";
-        connStatus.innerText = "🟢 サーバーに接続成功！";
-        roomsSection.style.display = "block";
-        socket.emit("getRooms");
-      });
+    socket.on("roomCreated", (roomId) => joinRoom(roomId));
 
-      socket.on("connect_error", (err) => {
-        connStatus.style.color = "#e74c3c";
-        connStatus.innerText = "🔴 接続エラー: サーバーが立ち上がるまで30秒ほど待ってから再度押してください。";
-      });
+    socket.on("roomJoined", (data) => {
+      currentRoom = data.roomInfo;
+      myPlayer = data.myPlayer;
 
-      socket.on("roomList", (rooms) => {
-        roomListDiv.innerHTML = "";
-        if (rooms.length === 0) {
-          roomListDiv.innerHTML = "<p style='color: #aaa;'>部屋がありません。新しく作成してください！</p>";
-          return;
-        }
-        rooms.forEach(r => {
-          const card = document.createElement("div");
-          card.className = "room-card";
-          card.innerHTML = `
-            <div>
-              <strong style="font-size: 16px;">${r.name}</strong>
-              <div><span class="mode-tag mode-${r.mode}">${r.mode.toUpperCase()}</span></div>
-              <div style="font-size: 13px; color: #ccc; margin: 8px 0;">参加者: ${r.playerCount}人</div>
-            </div>
-            <button onclick="joinRoom('${r.id}')">参加する</button>
-          `;
-          roomListDiv.appendChild(card);
-        });
-      });
+      lobbyScreen.style.display = "none";
+      document.body.requestPointerLock();
 
-      socket.on("roomCreated", (roomId) => joinRoom(roomId));
+      roomInfo.innerText = `[${currentRoom.mode.toUpperCase()}] ${currentRoom.name}`;
+      gameStatus.innerText = currentRoom.mode === "skywars" ? "落ちたら即死！中央島を目指せ！" :
+                             currentRoom.mode === "bedwars" ? "相手のベッドブロックを破壊しろ！" : "自由建築モード";
 
-      socket.on("roomJoined", (data) => {
-        currentRoom = data.roomInfo;
-        myPlayer = data.myPlayer;
+      initMap(currentRoom.mode, data.blocks);
 
-        lobbyScreen.style.display = "none";
-        document.body.requestPointerLock();
+      for (const id in data.players) {
+        if (id !== socket.id) addOtherPlayer(data.players[id]);
+      }
+    });
 
-        roomInfo.innerText = `[${currentRoom.mode.toUpperCase()}] ${currentRoom.name}`;
-        gameStatus.innerText = currentRoom.mode === "skywars" ? "落ちたら即死！中央島を目指せ！" :
-                               currentRoom.mode === "bedwars" ? "相手のベッドブロックを破壊しろ！" : "自由建築モード";
+    socket.on("playerJoinedRoom", (player) => addOtherPlayer(player));
+    socket.on("playerMoved", (pos) => {
+      if (otherPlayers[pos.id]) {
+        otherPlayers[pos.id].position.set(pos.x, pos.y, pos.z);
+        otherPlayers[pos.id].rotation.y = pos.yaw;
+      }
+    });
+    socket.on("playerLeftRoom", (id) => {
+      if (otherPlayers[id]) {
+        scene.remove(otherPlayers[id]);
+        delete otherPlayers[id];
+      }
+    });
 
-        initMap(currentRoom.mode, data.blocks);
+    socket.on("blockPlaced", (b) => addBlockMesh(b.x, b.y, b.z, b.color));
+    socket.on("blockBroken", (pos) => removeBlockMesh(pos.x, pos.y, pos.z));
 
-        for (const id in data.players) {
-          if (id !== socket.id) addOtherPlayer(data.players[id]);
-        }
-      });
-
-      socket.on("playerJoinedRoom", (player) => addOtherPlayer(player));
-      socket.on("playerMoved", (pos) => {
-        if (otherPlayers[pos.id]) {
-          otherPlayers[pos.id].position.set(pos.x, pos.y, pos.z);
-          otherPlayers[pos.id].rotation.y = pos.yaw;
-        }
-      });
-      socket.on("playerLeftRoom", (id) => {
-        if (otherPlayers[id]) {
-          scene.remove(otherPlayers[id]);
-          delete otherPlayers[id];
-        }
-      });
-
-      socket.on("blockPlaced", (b) => addBlockMesh(b.x, b.y, b.z, b.color));
-      socket.on("blockBroken", (pos) => removeBlockMesh(pos.x, pos.y, pos.z));
-
-      socket.on("playerAction", (action) => {
-        if (action.type === "hit" && action.targetId === socket.id) {
-          takeDamage(action.damage);
-        }
-      });
-    }
+    socket.on("playerAction", (action) => {
+      if (action.type === "hit" && action.targetId === socket.id) {
+        takeDamage(action.damage);
+      }
+    });
 
     window.joinRoom = function(roomId) {
       const playerName = document.getElementById("player-name").value.trim() || "Steve";
@@ -508,7 +482,7 @@
 
         if (camera.position.y < -10) takeDamage(100);
 
-        if (socket && socket.connected) {
+        if (socket.connected) {
           socket.emit("move", {
             x: camera.position.x,
             y: camera.position.y - 1.5,
