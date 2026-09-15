@@ -6,19 +6,15 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 
-// 静的ファイルの配信
 app.use(express.static(path.join(__dirname, "public")));
 
-// Socket.io設定（ポーリングとWebSocketの両方を完全許可）
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  },
+  cors: { origin: "*", methods: ["GET", "POST"] },
   transports: ["polling", "websocket"],
   allowEIO3: true
 });
 
+// 部屋データ（リロードしても消えないようにメモリに保持）
 const rooms = {};
 
 function getRoomList() {
@@ -31,7 +27,6 @@ function getRoomList() {
 }
 
 io.on("connection", (socket) => {
-  console.log("プレイヤー接続:", socket.id);
   let currentRoomId = null;
 
   socket.on("getRooms", () => {
@@ -52,16 +47,24 @@ io.on("connection", (socket) => {
   });
 
   socket.on("joinRoom", ({ roomId, playerName }) => {
+    // 部屋がなければ自動作成して復元
+    if (!rooms[roomId]) {
+      rooms[roomId] = {
+        id: roomId,
+        name: "復帰した部屋",
+        mode: "skywars",
+        players: {},
+        blocks: {}
+      };
+    }
     const room = rooms[roomId];
-    if (!room) return;
-
     currentRoomId = roomId;
     socket.join(roomId);
 
     room.players[socket.id] = {
       id: socket.id,
       name: playerName || "Steve",
-      x: 0, y: 10, z: 0,
+      x: 0, y: 15, z: 0,
       yaw: 0, pitch: 0,
       hp: 100
     };
@@ -89,7 +92,7 @@ io.on("connection", (socket) => {
   socket.on("placeBlock", (block) => {
     if (!currentRoomId || !rooms[currentRoomId]) return;
     const key = `${block.x},${block.y},${block.z}`;
-    rooms[currentRoomId].blocks[key] = block.color;
+    rooms[currentRoomId].blocks[key] = block.type;
     io.to(currentRoomId).emit("blockPlaced", block);
   });
 
@@ -105,15 +108,13 @@ io.on("connection", (socket) => {
     socket.to(currentRoomId).emit("playerAction", { fromId: socket.id, ...act });
   });
 
+  // 退出時：部屋自体は削除せずプレイヤーだけ減らす（リロード対策）
   function leave() {
     if (!currentRoomId || !rooms[currentRoomId]) return;
     const room = rooms[currentRoomId];
     delete room.players[socket.id];
     socket.leave(currentRoomId);
     socket.to(currentRoomId).emit("playerLeftRoom", socket.id);
-    if (Object.keys(room.players).length === 0) {
-      delete rooms[currentRoomId];
-    }
     currentRoomId = null;
     io.emit("roomList", getRoomList());
   }
@@ -122,7 +123,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", leave);
 });
 
-// 0.0.0.0 を明示して外部受信を全開放
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server listening on 0.0.0.0:${PORT}`);
