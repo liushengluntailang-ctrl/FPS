@@ -1,7 +1,6 @@
 {
-  "name": "cyber-castle-3d",
+  "name": "minecraft-pvp-server",
   "version": "1.0.0",
-  "description": "3D Multiplayer FPS Game on Render",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
