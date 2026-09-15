@@ -1,25 +1,21 @@
 const express = require("express");
 const http = require("http");
+const path = require("path");
 const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
 
-// CORS全許可（Chromebookのfile://から直接通信を通す）
+// publicフォルダの中にある index.html を自動配信する
+app.use(express.static(path.join(__dirname, "public")));
+
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  },
+  cors: { origin: "*", methods: ["GET", "POST"] },
   transports: ["websocket", "polling"]
 });
 
-// ルームデータ管理
+// ルーム管理
 const rooms = {};
-
-app.get("/", (req, res) => {
-  res.send("Minecraft PvP Server is running on Render!");
-});
 
 function getRoomList() {
   return Object.values(rooms).map(r => ({
@@ -33,10 +29,12 @@ function getRoomList() {
 io.on("connection", (socket) => {
   let currentRoomId = null;
 
+  // 部屋一覧
   socket.on("getRooms", () => {
     socket.emit("roomList", getRoomList());
   });
 
+  // 部屋作成
   socket.on("createRoom", ({ name, mode }) => {
     const roomId = "room_" + Math.random().toString(36).substring(2, 9);
     rooms[roomId] = {
@@ -50,6 +48,7 @@ io.on("connection", (socket) => {
     socket.emit("roomCreated", roomId);
   });
 
+  // 部屋参加
   socket.on("joinRoom", ({ roomId, playerName }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -76,6 +75,7 @@ io.on("connection", (socket) => {
     io.emit("roomList", getRoomList());
   });
 
+  // 位置の同期
   socket.on("move", (pos) => {
     if (!currentRoomId || !rooms[currentRoomId]) return;
     const room = rooms[currentRoomId];
@@ -85,6 +85,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ブロック設置
   socket.on("placeBlock", (block) => {
     if (!currentRoomId || !rooms[currentRoomId]) return;
     const key = `${block.x},${block.y},${block.z}`;
@@ -92,6 +93,7 @@ io.on("connection", (socket) => {
     io.to(currentRoomId).emit("blockPlaced", block);
   });
 
+  // ブロック破壊
   socket.on("breakBlock", (pos) => {
     if (!currentRoomId || !rooms[currentRoomId]) return;
     const key = `${pos.x},${pos.y},${pos.z}`;
@@ -99,6 +101,7 @@ io.on("connection", (socket) => {
     io.to(currentRoomId).emit("blockBroken", pos);
   });
 
+  // 攻撃アクション
   socket.on("action", (act) => {
     if (!currentRoomId) return;
     socket.to(currentRoomId).emit("playerAction", { fromId: socket.id, ...act });
@@ -121,8 +124,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", leave);
 });
 
-// Renderのポートで自動起動
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Minecraft PvP Server running on port ${PORT}`);
 });
