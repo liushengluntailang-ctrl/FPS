@@ -48,7 +48,7 @@
     input:focus, select:focus { outline: none; border-color: #2ecc71; }
     button { background: #27ae60; cursor: pointer; border: none; font-weight: bold; transition: 0.2s; }
     button:hover { background: #2ecc71; }
-    .status-msg { font-size: 14px; text-align: center; margin-top: 4px; font-weight: bold; color: #2ecc71; }
+    .status-msg { font-size: 15px; text-align: center; margin-top: 6px; font-weight: bold; }
 
     .room-list {
       display: grid;
@@ -108,7 +108,7 @@
   <div id="lobby-screen">
     <div class="lobby-box">
       <h1>MINECRAFT PvP ONLINE</h1>
-      <div id="conn-status" class="status-msg">🟢 サーバー接続中...</div>
+      <div id="conn-status" class="status-msg" style="color: #f1c40f;">🚀 サーバーに接続中...</div>
       <div class="input-group" style="margin-top: 12px;">
         <input type="text" id="player-name" placeholder="プレイヤー名を入力" value="Steve" style="flex: 1;">
       </div>
@@ -151,12 +151,18 @@
     <div class="slot" data-slot="4"><span style="color:#a0522d">■</span><span>木</span></div>
   </div>
 
+  <!-- CDNから確実に最新版を読み込む -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <script>
-    // ★自分自身のサーバーへ自動接続（URL入力不要！）
-    const socket = io({ transports: ["websocket", "polling"] });
+    // 確実につながるよう polling 優先で接続
+    const socket = io(window.location.origin, {
+      transports: ["polling", "websocket"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      timeout: 10000
+    });
 
     let myPlayer = null;
     let currentRoom = null;
@@ -197,19 +203,20 @@
     });
 
     socket.on("connect", () => {
+      connStatus.style.color = "#2ecc71";
       connStatus.innerText = "🟢 サーバーに接続完了！";
       socket.emit("getRooms");
     });
 
-    socket.on("connect_error", () => {
+    socket.on("connect_error", (err) => {
       connStatus.style.color = "#e74c3c";
-      connStatus.innerText = "🔴 接続中... (初回起動時は少し時間がかかります)";
+      connStatus.innerText = `🔴 接続エラー: ${err.message || "再試行中..."}`;
     });
 
     socket.on("roomList", (rooms) => {
       roomListDiv.innerHTML = "";
-      if (rooms.length === 0) {
-        roomListDiv.innerHTML = "<p style='color: #aaa;'>部屋がありません。新しく作成してください！</p>";
+      if (!rooms || rooms.length === 0) {
+        roomListDiv.innerHTML = "<p style='color: #aaa;'>部屋がありません。上のフォームから作成してください！</p>";
         return;
       }
       rooms.forEach(r => {
