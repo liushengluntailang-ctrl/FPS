@@ -2,22 +2,23 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Minecraft PvP Online Ultra</title>
+  <title>The Hive PvP Online</title>
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
       overflow: hidden;
-      font-family: 'Courier New', Courier, monospace, sans-serif;
+      font-family: 'Minecraft', 'Courier New', Courier, monospace, sans-serif;
       user-select: none;
       background: #111;
       color: #fff;
     }
 
+    /* ロビー画面 */
     #lobby-screen {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(135deg, #1b2838 0%, #2a475e 100%);
+      background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -26,8 +27,8 @@
       overflow-y: auto;
     }
     .lobby-box {
-      background: rgba(0, 0, 0, 0.85);
-      border: 3px solid #555;
+      background: rgba(10, 15, 25, 0.9);
+      border: 3px solid #f39c12;
       border-radius: 6px;
       padding: 20px;
       width: 100%;
@@ -35,7 +36,7 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.8);
       margin-bottom: 15px;
     }
-    h1 { margin: 0 0 10px 0; text-align: center; text-shadow: 3px 3px 0 #000; letter-spacing: 2px; color: #55ff55; }
+    h1 { margin: 0 0 10px 0; text-align: center; text-shadow: 3px 3px 0 #000; letter-spacing: 2px; color: #f1c40f; }
     .input-group { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
     input, select, button {
       padding: 10px 12px;
@@ -46,16 +47,16 @@
       font-family: inherit;
       font-size: 14px;
     }
-    input:focus, select:focus { outline: none; border-color: #55ff55; }
-    button { background: #2e7d32; cursor: pointer; border: 2px solid #1b5e20; font-weight: bold; }
-    button:hover { background: #388e3c; }
+    input:focus, select:focus { outline: none; border-color: #f1c40f; }
+    button { background: #d35400; cursor: pointer; border: 2px solid #e67e22; font-weight: bold; }
+    button:hover { background: #e67e22; }
 
     .id-badge { background: #333; padding: 4px 10px; border-radius: 4px; border: 1px solid #777; color: #f1c40f; font-weight: bold; }
     .friend-box { display: flex; gap: 10px; align-items: center; background: #1a1a1a; padding: 8px 12px; border-radius: 4px; border: 1px solid #444; margin-top: 10px; }
 
     .room-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 15px; }
     .room-card {
-      background: #222; border: 2px solid #444; border-radius: 4px; padding: 14px;
+      background: #1e272e; border: 2px solid #485460; border-radius: 4px; padding: 14px;
       display: flex; flex-direction: column; justify-content: space-between;
     }
     .mode-tag { display: inline-block; padding: 3px 6px; font-size: 11px; font-weight: bold; margin: 4px 0; border: 1px solid #fff; }
@@ -63,28 +64,38 @@
     .mode-bedwars { background: #c0392b; }
     .mode-custom { background: #2980b9; }
 
-    /* 照準 */
+    /* クロスヘア */
     #crosshair {
       position: absolute; top: 50%; left: 50%; width: 18px; height: 18px;
       transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
     }
-    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 2px #000; }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 2px #000; }
     #crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
     #crosshair::after { top: 0; left: 8px; width: 2px; height: 18px; }
 
     /* HUD */
     #hud {
       position: absolute; top: 15px; left: 15px; z-index: 10;
-      background: rgba(0, 0, 0, 0.7); padding: 12px 18px; border-radius: 4px;
-      border: 2px solid #555;
+      background: rgba(0, 0, 0, 0.65); padding: 10px 16px; border-radius: 4px;
+      border: 2px solid #f39c12;
     }
     #hud button { margin-top: 6px; padding: 5px 10px; font-size: 11px; }
-    #equip-status { font-size: 12px; color: #55ffff; margin-top: 5px; }
+
+    /* ★ The Hive名物：画面右側のマイクラ公式風スコアボード ★ */
+    #scoreboard {
+      position: absolute; top: 80px; right: 15px; z-index: 10;
+      background: rgba(0, 0, 0, 0.65); border: 2px solid #444; border-radius: 4px;
+      padding: 12px 16px; width: 190px; font-size: 13px; line-height: 1.6;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .sb-title { text-align: center; color: #f1c40f; font-weight: bold; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 6px; }
+    .sb-row { display: flex; justify-content: space-between; }
+    .sb-val { color: #2ecc71; font-weight: bold; }
 
     /* 通知トースト */
     #game-toast {
-      position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.75); border: 2px solid #f1c40f; color: #fff;
+      position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85); border: 2px solid #f1c40f; color: #fff;
       padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold;
       z-index: 30; pointer-events: none; display: none; text-shadow: 1px 1px 2px #000;
     }
@@ -116,7 +127,7 @@
     /* 村人交易モーダル */
     #trade-modal {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.92); border: 3px solid #55a832; border-radius: 6px;
+      background: rgba(10,15,25,0.95); border: 3px solid #2ecc71; border-radius: 6px;
       padding: 20px; z-index: 150; display: none; width: 340px; text-align: center;
     }
     .trade-item { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 8px; margin: 6px 0; border: 1px solid #444; }
@@ -127,7 +138,7 @@
   <!-- ロビー画面 -->
   <div id="lobby-screen">
     <div class="lobby-box">
-      <h1>MINECRAFT PvP ONLINE</h1>
+      <h1>THE HIVE - PvP NETWORK</h1>
       <div id="conn-status" style="text-align: center; font-weight: bold; color: #55ff55;">🟢 サーバー接続中...</div>
       
       <div class="input-group" style="margin-top: 14px;">
@@ -143,7 +154,7 @@
     </div>
 
     <div class="lobby-box" id="rooms-section">
-      <h3 style="margin-top: 0;">部屋を作成する</h3>
+      <h3 style="margin-top: 0; color: #f1c40f;">部屋を作成する</h3>
       <div class="input-group">
         <input type="text" id="new-room-name" placeholder="部屋の名前" style="flex: 2;">
         <select id="new-room-mode" style="flex: 1;">
@@ -154,24 +165,32 @@
         <button id="btn-create-room">部屋を作成</button>
       </div>
 
-      <h3 style="margin-top: 25px;">参加可能な部屋一覧</h3>
+      <h3 style="margin-top: 25px; color: #f1c40f;">ゲームロビー一覧</h3>
       <div class="room-list" id="room-list">
         <p style="color: #aaa;">部屋がまだありません。上のフォームから作成してください！</p>
       </div>
     </div>
   </div>
 
-  <!-- ゲーム内 UI -->
   <div id="crosshair"></div>
   <div id="hud">
-    <div id="room-info" style="font-weight: bold; font-size: 16px; color: #55ff55;"></div>
-    <div id="game-status" style="font-size: 12px; color: #ccc; margin-top: 4px;"></div>
-    <div id="equip-status">装備: なし (鉱石を掘ろう!)</div>
-    <div style="font-size: 11px; color: #f1c40f; margin-top: 4px;">💡 Shiftキーで崖から落ちずに橋を架けられる！</div>
+    <div id="room-info" style="font-weight: bold; font-size: 15px; color: #f1c40f;"></div>
+    <div style="font-size: 11px; color: #00ffff; margin-top: 4px;">🚀 前を向いて右クリックで自動ブリッジ！</div>
     <div style="display: flex; gap: 6px; margin-top: 8px;">
       <button id="btn-add-bots" style="background: #e67e22;">🤖 ボット補充で試合開始</button>
       <button id="btn-leave" style="background: #c0392b;">ロビーへ戻る</button>
     </div>
+  </div>
+
+  <!-- ★ The Hive風スコアボード ★ -->
+  <div id="scoreboard">
+    <div class="sb-title">THE HIVE</div>
+    <div class="sb-row"><span>ゲーム:</span><span class="sb-val" id="sb-mode">SKYWARS</span></div>
+    <div class="sb-row"><span>マップ:</span><span class="sb-val" id="sb-map">Islands</span></div>
+    <div class="sb-row"><span>撃破数:</span><span class="sb-val" id="sb-kills">0</span></div>
+    <div class="sb-row"><span>生存者:</span><span class="sb-val" id="sb-alive">4</span></div>
+    <div class="sb-row"><span>ベッド:</span><span class="sb-val" id="sb-bed">生きてる</span></div>
+    <div style="margin-top: 8px; font-size: 10px; color: #888; text-align: center;">hive.net</div>
   </div>
 
   <div id="game-toast"></div>
@@ -188,7 +207,7 @@
 
   <!-- 村人ショップ -->
   <div id="trade-modal">
-    <h3 style="color: #2ecc71; margin-top: 0;">村人のショップ</h3>
+    <h3 style="color: #2ecc71; margin-top: 0;">ショップ村人</h3>
     <div class="trade-item">
       <span>🍎 金のリンゴ (全回復)</span>
       <button onclick="buyItem('golden_apple', 1)">1 🟢</button>
@@ -198,7 +217,7 @@
       <button onclick="buyItem('blocks', 2)">2 🟢</button>
     </div>
     <div class="trade-item">
-      <span>💎 ダイヤの剣 (攻撃力UP)</span>
+      <span>💎 ダイヤの剣 (超高攻撃力)</span>
       <button onclick="buyItem('diamond_sword', 4)">4 🟢</button>
     </div>
     <button onclick="closeTrade()" style="margin-top: 10px; background: #666; width: 100%;">閉じる (ESC)</button>
@@ -239,13 +258,13 @@
       }
     });
 
+    // --- テクスチャ生成 ---
     function makeBlockTexture(baseColor, dotColor) {
       const cvs = document.createElement("canvas");
       cvs.width = 16; cvs.height = 16;
       const ctx = cvs.getContext("2d");
       ctx.fillStyle = baseColor;
       ctx.fillRect(0, 0, 16, 16);
-
       for (let x = 1; x < 15; x++) {
         for (let y = 1; y < 15; y++) {
           if (Math.random() > 0.65) {
@@ -257,7 +276,6 @@
       ctx.strokeStyle = "rgba(0,0,0,0.55)";
       ctx.lineWidth = 1;
       ctx.strokeRect(0.5, 0.5, 15, 15);
-
       const tex = new THREE.CanvasTexture(cvs);
       tex.magFilter = THREE.NearestFilter;
       tex.minFilter = THREE.NearestFilter;
@@ -294,15 +312,19 @@
     const matOreDiamond  = new THREE.MeshLambertMaterial({ map: makeOreTexture("#33eeff") });
     const matOreEmerald  = new THREE.MeshLambertMaterial({ map: makeOreTexture("#11dd44") });
     const matBed         = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#c0392b", "#e74c3c") });
+    const matChest       = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#d35400", "#f39c12") }); // 宝箱
+    const matSpawner     = new THREE.MeshLambertMaterial({ color: 0x9b59b6, wireframe: false }); // スポナー
 
     const matByType = {
-      grass: matGrass, dirt: matDirt, stone: matStone, wood: matWood, bed: matBed,
+      grass: matGrass, dirt: matDirt, stone: matStone, wood: matWood, bed: matBed, chest: matChest, spawner: matSpawner,
       ore_redstone: matOreRedstone, ore_iron: matOreIron, ore_gold: matOreGold,
       ore_diamond: matOreDiamond, ore_emerald: matOreEmerald
     };
 
+    // --- ゲームステータス ---
     let maxHp = 100;
     let hp = 100;
+    let kills = 0;
     let emeralds = 0;
     let swordDamage = 25;
     let armorDefense = 0;
@@ -311,7 +333,10 @@
 
     const heartsContainer = document.getElementById("hearts-container");
     const emeraldCountText = document.getElementById("emerald-count");
-    const equipStatusText = document.getElementById("equip-status");
+    const sbKills = document.getElementById("sb-kills");
+    const sbAlive = document.getElementById("sb-alive");
+    const sbBed = document.getElementById("sb-bed");
+    const sbMode = document.getElementById("sb-mode");
 
     function updateHearts() {
       heartsContainer.innerHTML = "";
@@ -325,6 +350,7 @@
     }
     updateHearts();
 
+    // --- 通信 ---
     const socket = io(window.location.origin, {
       transports: ["polling", "websocket"],
       reconnection: true
@@ -338,7 +364,6 @@
     const lobbyScreen = document.getElementById("lobby-screen");
     const roomListDiv = document.getElementById("room-list");
     const roomInfo = document.getElementById("room-info");
-    const gameStatus = document.getElementById("game-status");
     const connStatus = document.getElementById("conn-status");
 
     window.addEventListener("keydown", (e) => {
@@ -398,15 +423,17 @@
       document.body.requestPointerLock();
 
       roomInfo.innerText = `[${currentRoom.mode.toUpperCase()}] ${currentRoom.name}`;
-      gameStatus.innerText = "Shiftキーで落下防止！ブロックを置いて突撃しよう！";
+      sbMode.innerText = currentRoom.mode.toUpperCase();
+      sbBed.innerText = currentRoom.mode === "bedwars" ? "安全" : "なし";
 
       initMap(currentRoom.mode, data.blocks);
-      showToast("部屋に参加しました！", "#2ecc71");
+      showToast("The Hiveサーバーへようこそ！", "#2ecc71");
     });
 
     socket.on("playerJoinedRoom", (player) => {
       addOtherPlayer(player);
       showToast(`${player.name} が参加しました！`, "#55ffff");
+      sbAlive.innerText = 1 + Object.keys(otherPlayers).length + bots.length;
     });
     socket.on("playerMoved", (pos) => {
       if (otherPlayers[pos.id]) {
@@ -418,6 +445,7 @@
       if (otherPlayers[id]) {
         scene.remove(otherPlayers[id]);
         delete otherPlayers[id];
+        sbAlive.innerText = 1 + Object.keys(otherPlayers).length + bots.length;
       }
     });
 
@@ -434,13 +462,13 @@
       socket.emit("joinRoom", { roomId, playerName });
     };
 
-    // --- Three.js ---
+    // --- 3D Scene ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x78a7ff);
     scene.fog = new THREE.Fog(0x78a7ff, 35, 100);
 
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.rotation.order = 'YXZ'; // 傾き防止
+    camera.rotation.order = 'YXZ';
 
     const renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -449,7 +477,7 @@
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
     dirLight.position.set(30, 60, 20);
     scene.add(dirLight);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
 
     const outlineGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002));
     const outlineMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
@@ -479,7 +507,7 @@
       const mat = matByType[type] || matGrass;
       const mesh = new THREE.Mesh(boxGeo, mat);
       mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
-      mesh.userData = { x, y, z, type, isBed: type === "bed" };
+      mesh.userData = { x, y, z, type, isBed: type === "bed", isChest: type === "chest" };
       scene.add(mesh);
       worldBlocks[key] = mesh;
     }
@@ -507,6 +535,7 @@
       villagerMesh = group;
     }
 
+    // --- ★ ボット作成（橋架けAI搭載） ---
     function spawnBot(x, y, z, name) {
       const group = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), new THREE.MeshLambertMaterial({ color: 0xe74c3c }));
@@ -521,14 +550,16 @@
         mesh: group,
         hp: 100,
         name: name,
+        velY: 0,
         attackCooldown: 0
       });
+      sbAlive.innerText = 1 + Object.keys(otherPlayers).length + bots.length;
     }
 
     document.getElementById("btn-add-bots").addEventListener("click", () => {
-      spawnBot(0, 11, 0, "Bot_Alex");
-      spawnBot(-14, 11, 0, "Bot_Zombie");
-      showToast("🤖 ボットを補充しました！試合開始！", "#e67e22");
+      spawnBot(0, 11, 0, "Hive_Alex");
+      spawnBot(-14, 11, 0, "Hive_Zombie");
+      showToast("🤖 ボットを補充！橋を架けて攻めてきます！", "#e67e22");
     });
 
     function createIsland(cx, cy, cz, radius) {
@@ -556,26 +587,21 @@
       }
     }
 
-    // ★★★ 距離を大幅短縮 ＆ 飛び石（中継ブロック）を設置 ★★★
     function initMap(mode, existingBlocks) {
       cleanupGameWorld();
 
       if (mode === "skywars") {
-        // 中央島 (半径5)
-        createIsland(0, 10, 0, 5);
+        createIsland(0, 10, 0, 5); // 中央島
         spawnVillager(0, 11, -2);
+        addBlockMesh(0, 11, 2, "chest"); // 中央チェスト
+        addBlockMesh(0, 11, 0, "spawner"); // 中央エメラルドスポナー
 
-        // プレイヤー島（中央からわずか14ブロックの位置に接近！）
         createIsland(14, 10, 0, 3);
         createIsland(-14, 10, 0, 3);
         createIsland(0, 10, 14, 3);
         createIsland(0, 10, -14, 3);
 
-        // 島と島の間の「飛び石（足場）」でさらに渡りやすく！
-        addBlockMesh(8, 10, 0, "stone");
-        addBlockMesh(-8, 10, 0, "stone");
-        addBlockMesh(0, 10, 8, "stone");
-        addBlockMesh(0, 10, -8, "stone");
+        addBlockMesh(14, 11, 0, "spawner"); // 自陣スポナー
 
         spawnPoint.set(14, 13, 0);
         camera.position.copy(spawnPoint);
@@ -585,10 +611,7 @@
         createIsland(0, 10, 0, 4);   // 中央島
         spawnVillager(-12, 11, 2);
 
-        // 飛び石
-        addBlockMesh(-7, 10, 0, "stone");
-        addBlockMesh(7, 10, 0, "stone");
-
+        addBlockMesh(0, 11, 0, "spawner");
         addBlockMesh(-13, 11, 0, "bed");
         addBlockMesh(13, 11, 0, "bed");
 
@@ -667,10 +690,8 @@
         showToast("❤️ レッドストーン！最大体力+10＆全回復！", "#ff2222");
       } else if (type === "ore_iron") {
         armorDefense = Math.min(0.5, armorDefense + 0.15);
-        equipStatusText.innerText = `装備: 鉄の防具 (軽減 ${(armorDefense*100).toFixed(0)}%)`;
         showToast("🛡️ 鉄鉱石！鉄の防具を装備！", "#d8af93");
       } else if (type === "ore_gold") {
-        equipStatusText.innerText = "装備: 金の防具 (移動速度UP!)";
         showToast("🟡 金鉱石！金の装備獲得！", "#ffdd33");
       } else if (type === "ore_diamond") {
         swordDamage = 50;
@@ -680,7 +701,7 @@
       } else if (type === "ore_emerald") {
         emeralds++;
         emeraldCountText.innerText = `🟢 ${emeralds}`;
-        showToast("🟢 エメラルド獲得！村人と取引しよう！", "#2ecc71");
+        showToast("🟢 エメラルド獲得！", "#2ecc71");
       }
     }
 
@@ -714,6 +735,7 @@
       }
     };
 
+    // --- ★ The Hive風：高速前方自動ブリッジ＆クリック処理 ---
     window.addEventListener("mousedown", (e) => {
       if (!isLocked) return;
       isSwinging = true;
@@ -722,6 +744,7 @@
       raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
       if (e.button === 0) {
+        // 攻撃
         if (selectedSlot === 1) {
           for (let i = bots.length - 1; i >= 0; i--) {
             const b = bots[i];
@@ -733,6 +756,9 @@
               if (b.hp <= 0) {
                 scene.remove(b.mesh);
                 bots.splice(i, 1);
+                kills++;
+                sbKills.innerText = kills;
+                sbAlive.innerText = 1 + Object.keys(otherPlayers).length + bots.length;
                 showToast(`⚔️ ${b.name} を撃破！`, "#55ff55");
               }
               return;
@@ -748,15 +774,28 @@
           }
         }
 
+        // 採掘 ＆ チェスト開封
         const hits = raycaster.intersectObjects(Object.values(worldBlocks));
         if (hits.length > 0 && hits[0].distance < 5.5) {
           const target = hits[0].object.userData;
+          if (target.isChest) {
+            swordDamage = 50;
+            swordMesh.material.color.setHex(0x33eeff);
+            document.getElementById("weapon-name").innerText = "ダイヤの剣";
+            emeralds += 3;
+            emeraldCountText.innerText = `🟢 ${emeralds}`;
+            showToast("🎁 中央チェストを開封！ダイヤ剣とエメラルドGET！", "#f39c12");
+            removeBlockMesh(target.x, target.y, target.z);
+            socket.emit("breakBlock", { x: target.x, y: target.y, z: target.z });
+            return;
+          }
           handleOreBreak(target.type);
           removeBlockMesh(target.x, target.y, target.z);
           socket.emit("breakBlock", { x: target.x, y: target.y, z: target.z });
         }
       }
 
+      // 右クリック（ブロック設置 ＆ 村人会話 ＆ ★The Hive前方自動ブリッジ★）
       if (e.button === 2) {
         if (villagerMesh) {
           const vHits = raycaster.intersectObjects(villagerMesh.children);
@@ -768,17 +807,30 @@
 
         if (selectedSlot !== 1) {
           const hits = raycaster.intersectObjects(Object.values(worldBlocks));
+          const types = { 2: "grass", 3: "stone", 4: "wood" };
+          const type = types[selectedSlot] || "stone";
+
           if (hits.length > 0 && hits[0].distance < 5.5) {
+            // 通常の面設置
             const hit = hits[0];
             const pos = hit.object.userData;
             const normal = hit.face.normal;
             const nx = pos.x + normal.x;
             const ny = pos.y + normal.y;
             const nz = pos.z + normal.z;
-            const types = { 2: "grass", 3: "stone", 4: "wood" };
-            const type = types[selectedSlot] || "grass";
             addBlockMesh(nx, ny, nz, type);
             socket.emit("placeBlock", { x: nx, y: ny, z: nz, color: type });
+          } else {
+            // ★★★ The Hive式 前方自動ブリッジ（空中にブロックを前進設置） ★★★
+            const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+            const placeX = Math.floor(camera.position.x + forward.x * 1.5);
+            const placeY = Math.floor(camera.position.y - 1.6);
+            const placeZ = Math.floor(camera.position.z + forward.z * 1.5);
+
+            if (!worldBlocks[`${placeX},${placeY},${placeZ}`]) {
+              addBlockMesh(placeX, placeY, placeZ, type);
+              socket.emit("placeBlock", { x: placeX, y: placeY, z: placeZ, color: type });
+            }
           }
         }
       }
@@ -804,7 +856,6 @@
       }
     }
 
-    // 接地判定
     function checkGroundedAt(x, y, z) {
       const checkY = Math.floor(y - 1.6);
       const offsets = [[0.2, 0.2], [-0.2, 0.2], [0.2, -0.2], [-0.2, -0.2], [0, 0]];
@@ -815,6 +866,9 @@
       }
       return null;
     }
+
+    // スポナーの定期資源生成（3秒ごと）
+    let spawnerTimer = 0;
 
     let prevTime = performance.now();
     function animate() {
@@ -846,6 +900,14 @@
       }
 
       if (isLocked && currentRoom) {
+        // スポナーの資源生成
+        spawnerTimer += delta;
+        if (spawnerTimer >= 3.5) {
+          spawnerTimer = 0;
+          emeralds++;
+          emeraldCountText.innerText = `🟢 ${emeralds}`;
+        }
+
         const isSneaking = keys["ShiftLeft"] || keys["ShiftRight"];
         const moveSpeed = isSneaking ? 3.5 : (armorDefense > 0.2 ? 10.0 : 8.0);
 
@@ -862,12 +924,10 @@
         const deltaX = (-forward.x * moveVec.z + right.x * moveVec.x) * moveSpeed * delta;
         const deltaZ = (-forward.z * moveVec.z + right.z * moveVec.x) * moveSpeed * delta;
 
-        // ★★★ Shiftスニーク（崖から落ちない落下防止機能） ★★★
         let nextX = camera.position.x + deltaX;
         let nextZ = camera.position.z + deltaZ;
 
         if (isSneaking && checkGroundedAt(camera.position.x, camera.position.y, camera.position.z) !== null) {
-          // 次の移動先で足場がなくなる場合は移動をキャンセルしてフチで止まる
           if (checkGroundedAt(nextX, camera.position.y, camera.position.z) === null) nextX = camera.position.x;
           if (checkGroundedAt(camera.position.x, camera.position.y, nextZ) === null) nextZ = camera.position.z;
         }
@@ -887,18 +947,51 @@
 
         if (camera.position.y < -15) takeDamage(100);
 
-        bots.forEach(b => {
+        // ★★★ ボットAI：橋を架けながらプレイヤーに向かって進む！ ★★★
+        bots.forEach((b, idx) => {
           b.attackCooldown -= delta;
           const toPlayer = new THREE.Vector3().subVectors(camera.position, b.mesh.position);
           toPlayer.y = 0;
           const dist = toPlayer.length();
 
-          if (dist > 1.8 && dist < 25) {
+          if (dist > 1.8 && dist < 30) {
             toPlayer.normalize();
-            b.mesh.position.addScaledVector(toPlayer, 3.5 * delta);
+            const step = toPlayer.clone().multiplyScalar(3.2 * delta);
+            const targetPos = b.mesh.position.clone().add(step);
+
+            // ボットの進行方向の足元ブロックを確認
+            const botGroundCheckY = Math.floor(targetPos.y - 0.2);
+            const checkKey = `${Math.floor(targetPos.x)},${botGroundCheckY},${Math.floor(targetPos.z)}`;
+
+            // ★足元にブロックがない場合、ボット自ら石ブロックを置いて橋を架ける！
+            if (!worldBlocks[checkKey]) {
+              const bx = Math.floor(targetPos.x);
+              const bz = Math.floor(targetPos.z);
+              addBlockMesh(bx, botGroundCheckY, bz, "stone");
+              socket.emit("placeBlock", { x: bx, y: botGroundCheckY, z: bz, color: "stone" });
+            }
+
+            b.mesh.position.add(step);
           } else if (dist <= 1.8 && b.attackCooldown <= 0) {
             takeDamage(15);
             b.attackCooldown = 1.2;
+          }
+
+          // ボットの重力＆奈落落下死
+          const botGround = checkGroundedAt(b.mesh.position.x, b.mesh.position.y + 1.0, b.mesh.position.z);
+          if (botGround === null) {
+            b.velY -= 20 * delta;
+            b.mesh.position.y += b.velY * delta;
+            if (b.mesh.position.y < -12) {
+              scene.remove(b.mesh);
+              bots.splice(idx, 1);
+              kills++;
+              sbKills.innerText = kills;
+              sbAlive.innerText = 1 + Object.keys(otherPlayers).length + bots.length;
+              showToast(`💀 ${b.name} は奈落に落ちた！`, "#ff5555");
+            }
+          } else {
+            b.velY = 0;
           }
         });
 
