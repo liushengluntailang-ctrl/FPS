@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>The Hive PvP Online Ultra</title>
+  <title>The Hive PvP Online Ultimate</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -14,7 +14,6 @@
       color: #fff;
     }
 
-    /* ロビー画面 */
     #lobby-screen {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -65,7 +64,6 @@
     .mode-custom { background: #2980b9; }
     .rule-tag { display: inline-block; padding: 2px 5px; font-size: 10px; background: #555; border-radius: 3px; margin-left: 4px; }
 
-    /* クロスヘア */
     #crosshair {
       position: absolute; top: 50%; left: 50%; width: 18px; height: 18px;
       transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
@@ -74,7 +72,6 @@
     #crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
     #crosshair::after { top: 0; left: 8px; width: 2px; height: 18px; }
 
-    /* HUD */
     #hud {
       position: absolute; top: 15px; left: 15px; z-index: 10;
       background: rgba(0, 0, 0, 0.65); padding: 10px 16px; border-radius: 4px;
@@ -82,7 +79,6 @@
     }
     #hud button { margin-top: 6px; padding: 5px 10px; font-size: 11px; }
 
-    /* スコアボード */
     #scoreboard {
       position: absolute; top: 80px; right: 15px; z-index: 10;
       background: rgba(0, 0, 0, 0.65); border: 2px solid #444; border-radius: 4px;
@@ -109,7 +105,6 @@
       z-index: 10; font-size: 18px; color: #2ecc71; font-weight: bold; text-shadow: 2px 2px 0 #000;
     }
 
-    /* ホットバー */
     #hotbar {
       position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
       display: flex; gap: 4px; background: #222; padding: 4px; border: 3px solid #555;
@@ -123,7 +118,6 @@
     .slot.active { border: 3px solid #fff; background: #333; }
     .slot-key { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #888; }
 
-    /* 村人交易モーダル */
     #trade-modal {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: rgba(10,15,25,0.95); border: 3px solid #2ecc71; border-radius: 6px;
@@ -152,7 +146,6 @@
       </div>
     </div>
 
-    <!-- 部屋作成エリア（対戦ルール選択つき！） -->
     <div class="lobby-box" id="rooms-section">
       <h3 style="margin-top: 0; color: #f1c40f;">部屋を作成する</h3>
       <div class="input-group">
@@ -180,6 +173,7 @@
   <div id="hud">
     <div id="room-info" style="font-weight: bold; font-size: 15px; color: #f1c40f;"></div>
     <div id="my-team-info" style="font-size: 12px; color: #fff; margin-top: 3px;"></div>
+    <div id="equip-status" style="font-size: 12px; color: #55ffff; margin-top: 3px;">防具: なし (軽減 0%)</div>
     <div style="font-size: 11px; color: #00ffff; margin-top: 4px;">🚀 前を向いて右クリックで自動ブリッジ！</div>
     <div style="display: flex; gap: 6px; margin-top: 8px;">
       <button id="btn-add-bots" style="background: #e67e22;">🤖 ボット補充で試合開始</button>
@@ -201,7 +195,6 @@
   <div id="hearts-container"></div>
   <div id="emerald-count">🟢 0</div>
 
-  <!-- ホットバー -->
   <div id="hotbar">
     <div class="slot active" data-slot="1"><span class="slot-key">1</span><span id="weapon-icon">🗡️</span><span id="weapon-name">木の剣</span></div>
     <div class="slot" data-slot="2"><span class="slot-key">2</span><span style="color:#55ff55">■</span><span>草</span></div>
@@ -209,7 +202,6 @@
     <div class="slot" data-slot="4"><span class="slot-key">4</span><span style="color:#aa5500">■</span><span>木</span></div>
   </div>
 
-  <!-- 村人ショップ -->
   <div id="trade-modal">
     <h3 style="color: #2ecc71; margin-top: 0;">ショップ村人</h3>
     <div class="trade-item">
@@ -332,14 +324,16 @@
     let kills = 0;
     let emeralds = 0;
     let swordDamage = 25;
-    let armorDefense = 0;
-    let myTeam = "red"; // "red" | "blue" | "solo"
-    let currentRule = "solo"; // "solo" | "team"
+    let armorDefense = 0; // 防具軽減率
+    let myTeam = "red";
+    let currentRule = "solo";
     let bots = [];
+    let droppedItems = []; // 地面に落ちているアイテム一覧
     let spawnPoint = new THREE.Vector3(20, 13, 0);
 
     const heartsContainer = document.getElementById("hearts-container");
     const emeraldCountText = document.getElementById("emerald-count");
+    const equipStatusText = document.getElementById("equip-status");
     const sbKills = document.getElementById("sb-kills");
     const sbAlive = document.getElementById("sb-alive");
     const sbBed = document.getElementById("sb-bed");
@@ -359,13 +353,12 @@
     }
     updateHearts();
 
-    // --- ★ 頭上HPバー（ビルボード）生成用関数 ★ ---
+    // --- 頭上HPバー ---
     function createHealthBarSprite(name, currentHp, maxHpVal, team) {
       const cvs = document.createElement("canvas");
       cvs.width = 256; cvs.height = 64;
       const ctx = cvs.getContext("2d");
 
-      // 名前
       ctx.font = "bold 24px 'Courier New', sans-serif";
       ctx.textAlign = "center";
       ctx.fillStyle = team === "red" ? "#ff4444" : (team === "blue" ? "#33aaff" : "#ffffff");
@@ -373,14 +366,12 @@
       ctx.shadowBlur = 4;
       ctx.fillText(name, 128, 26);
 
-      // HPバー枠
       ctx.fillStyle = "rgba(0,0,0,0.7)";
       ctx.fillRect(28, 36, 200, 16);
       ctx.strokeStyle = "#fff";
       ctx.lineWidth = 2;
       ctx.strokeRect(28, 36, 200, 16);
 
-      // HPバー残量
       const ratio = Math.max(0, currentHp / maxHpVal);
       ctx.fillStyle = ratio > 0.5 ? "#2ecc71" : (ratio > 0.25 ? "#f1c40f" : "#e74c3c");
       ctx.fillRect(30, 38, 196 * ratio, 12);
@@ -401,7 +392,24 @@
       group.add(newSprite);
     }
 
-    // --- Socket.io 通信 ---
+    // --- ★★★ ドロップアイテム（死亡時や鉱石から落ちて拾える機能） ★★★
+    function spawnDroppedItem(x, y, z, itemType, count = 1) {
+      const geo = new THREE.BoxGeometry(0.35, 0.35, 0.35);
+      const color = itemType === "emerald" ? 0x2ecc71 : (itemType === "diamond" ? 0x33eeff : 0xf1c40f);
+      const mat = new THREE.MeshLambertMaterial({ color: color });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x + (Math.random()-0.5)*0.8, y + 0.5, z + (Math.random()-0.5)*0.8);
+      scene.add(mesh);
+
+      droppedItems.push({
+        mesh: mesh,
+        type: itemType,
+        count: count,
+        spawnTime: performance.now()
+      });
+    }
+
+    // --- 通信 ---
     const socket = io(window.location.origin, {
       transports: ["polling", "websocket"],
       reconnection: true
@@ -431,7 +439,6 @@
       const name = document.getElementById("new-room-name").value.trim();
       const mode = document.getElementById("new-room-mode").value;
       const rule = document.getElementById("new-room-rule").value;
-      // 部屋名に対戦ルール情報を保持
       socket.emit("createRoom", { name: (name || "PvP部屋") + ` [${rule === "team" ? "チーム戦" : "個人戦"}]`, mode: mode });
     });
 
@@ -525,9 +532,11 @@
         takeDamage(action.damage);
       }
       if (action.type === "hpSync" && otherPlayers[action.fromId]) {
-        // 他人のHP同期
         otherPlayers[action.fromId].userData.hp = action.hp;
         updateHpSprite(otherPlayers[action.fromId], otherPlayers[action.fromId].userData.name, action.hp, 100, otherPlayers[action.fromId].userData.team);
+      }
+      if (action.type === "dropItem") {
+        spawnDroppedItem(action.x, action.y, action.z, action.itemType, action.count);
       }
     });
 
@@ -542,7 +551,7 @@
     scene.fog = new THREE.Fog(0x78a7ff, 45, 140);
 
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.rotation.order = 'YXZ'; // 傾き防止
+    camera.rotation.order = 'YXZ';
 
     const renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -609,7 +618,7 @@
       villagerMesh = group;
     }
 
-    // --- ボット作成（頭上HPバー ＆ チーム対応） ---
+    // --- ★★★ ボット作成（採掘・拾い・取引・攻撃ができる自律AI搭載） ★★★
     function spawnBot(x, y, z, name, team = "solo") {
       const group = new THREE.Group();
       const bodyColor = team === "red" ? 0xe74c3c : (team === "blue" ? 0x2980b9 : 0x8e44ad);
@@ -620,9 +629,7 @@
       group.add(body); group.add(head);
       group.position.set(x, y, z);
 
-      // ★頭上HPバーを付与
       updateHpSprite(group, name, 100, 100, team);
-
       scene.add(group);
 
       bots.push({
@@ -631,6 +638,10 @@
         maxHp: 100,
         name: name,
         team: team,
+        emeralds: 0,
+        swordDmg: 25,
+        defense: 0,
+        targetOre: null,
         velY: 0,
         attackCooldown: 0
       });
@@ -641,15 +652,14 @@
       if (currentRule === "team") {
         spawnBot(0, 11, 0, "Bot_Red", "red");
         spawnBot(-20, 11, 0, "Bot_Blue", "blue");
-        showToast("🤖 赤・青チームのボットを補充しました！", "#e67e22");
+        showToast("🤖 人間と同等に動く赤・青ボットを補充しました！", "#e67e22");
       } else {
         spawnBot(0, 11, 0, "Bot_Alex", "solo");
         spawnBot(-20, 11, 0, "Bot_Zombie", "solo");
-        showToast("🤖 個人戦ボットを補充しました！", "#e67e22");
+        showToast("🤖 採掘・アイテム回収・村人取引をするボットを補充！", "#e67e22");
       }
     });
 
-    // --- ★ 超巨大浮島生成（厚みと深みのある本格仕様） ---
     function createIsland(cx, cy, cz, radius) {
       for (let x = -radius; x <= radius; x++) {
         for (let z = -radius; z <= radius; z++) {
@@ -662,11 +672,11 @@
             for (let dy = 2; dy <= depth + 2; dy++) {
               let bType = "stone";
               const r = Math.random();
-              if (r < 0.05) bType = "ore_diamond";
-              else if (r < 0.10) bType = "ore_emerald";
-              else if (r < 0.18) bType = "ore_gold";
-              else if (r < 0.28) bType = "ore_redstone";
-              else if (r < 0.40) bType = "ore_iron";
+              if (r < 0.06) bType = "ore_diamond";
+              else if (r < 0.12) bType = "ore_emerald";
+              else if (r < 0.20) bType = "ore_gold";
+              else if (r < 0.30) bType = "ore_redstone";
+              else if (r < 0.42) bType = "ore_iron";
 
               addBlockMesh(cx + x, cy - dy, cz + z, bType);
             }
@@ -675,24 +685,20 @@
       }
     }
 
-    // --- ★ マップ初期化（フラットワールド対応 ＆ 巨大浮島） ---
     function initMap(mode, existingBlocks) {
       cleanupGameWorld();
 
       if (mode === "skywars") {
-        // 中央島（超巨大：半径11）
         createIsland(0, 10, 0, 11);
         spawnVillager(0, 11, -4);
         addBlockMesh(0, 11, 3, "chest");
         addBlockMesh(0, 11, 0, "spawner");
 
-        // プレイヤー島（超巨大：半径7、しっかり拠点構築可能）
         createIsland(28, 10, 0, 7);
         createIsland(-28, 10, 0, 7);
         createIsland(0, 10, 28, 7);
         createIsland(0, 10, -28, 7);
 
-        // 飛び石足場（3x3のしっかりした中継島）
         createIsland(17, 10, 0, 2);
         createIsland(-17, 10, 0, 2);
         createIsland(0, 10, 17, 2);
@@ -702,35 +708,32 @@
         camera.position.copy(spawnPoint);
 
       } else if (mode === "bedwars") {
-        // 赤島・青島（要塞拠点：半径8）
-        createIsland(-26, 10, 0, 8); // 赤
-        createIsland(26, 10, 0, 8);  // 青
-        createIsland(0, 10, 0, 9);   // 中央巨大島
+        createIsland(-26, 10, 0, 8);
+        createIsland(26, 10, 0, 8);
+        createIsland(0, 10, 0, 9);
 
         spawnVillager(-24, 11, 3);
         spawnVillager(24, 11, 3);
 
-        // 中継島
         createIsland(-15, 10, 0, 2);
         createIsland(15, 10, 0, 2);
 
         addBlockMesh(0, 11, 0, "spawner");
-        addBlockMesh(-26, 11, 0, "bed"); // 赤ベッド
-        addBlockMesh(26, 11, 0, "bed");  // 青ベッド
+        addBlockMesh(-26, 11, 0, "bed");
+        addBlockMesh(26, 11, 0, "bed");
 
         spawnPoint.set(myTeam === "blue" ? 26 : -26, 13, 0);
         camera.position.copy(spawnPoint);
 
       } else {
-        // ★★★ 自由なマップ＝超広大なフラットワールド（平坦な草原） ★★★
-        const size = 30; // 60x60ブロックの平坦な大地
+        const size = 30;
         for (let x = -size; x <= size; x++) {
           for (let z = -size; z <= size; z++) {
             addBlockMesh(x, 4, z, "grass");
             addBlockMesh(x, 3, z, "dirt");
             addBlockMesh(x, 2, z, "dirt");
             addBlockMesh(x, 1, z, "stone");
-            addBlockMesh(x, 0, z, "bedrock"); // 最下層は岩盤！
+            addBlockMesh(x, 0, z, "bedrock");
           }
         }
         spawnVillager(0, 5, -3);
@@ -750,13 +753,14 @@
       for (const key in worldBlocks) scene.remove(worldBlocks[key]);
       for (const id in otherPlayers) scene.remove(otherPlayers[id]);
       bots.forEach(b => scene.remove(b.mesh));
+      droppedItems.forEach(d => scene.remove(d.mesh));
       bots = [];
+      droppedItems = [];
       if (villagerMesh) { scene.remove(villagerMesh); villagerMesh = null; }
       Object.keys(worldBlocks).length = 0;
       Object.keys(otherPlayers).length = 0;
     }
 
-    // 他プレイヤー描画（頭上HPバー＆チームカラー）
     function addOtherPlayer(p) {
       const group = new THREE.Group();
       const pTeam = currentRule === "team" ? (Object.keys(otherPlayers).length % 2 === 0 ? "blue" : "red") : "solo";
@@ -806,20 +810,26 @@
     });
     window.addEventListener("keyup", (e) => keys[e.code] = false);
 
+    // --- ★ 防具の本格ダメージ軽減機能 ---
     function handleOreBreak(type) {
       if (type === "ore_redstone") {
         maxHp += 10; hp = maxHp; updateHearts();
         showToast("❤️ レッドストーン！最大体力+10＆全回復！", "#ff2222");
       } else if (type === "ore_iron") {
-        armorDefense = Math.min(0.5, armorDefense + 0.15);
-        showToast("🛡️ 鉄鉱石！鉄の防具を装備！", "#d8af93");
+        armorDefense = Math.max(armorDefense, 0.30); // 鉄防具: 30%カット
+        equipStatusText.innerText = "防具: 鉄の鎧 (軽減 30%)";
+        showToast("🛡️ 鉄鉱石！鉄の防具を装備（30%ダメージ軽減）！", "#d8af93");
       } else if (type === "ore_gold") {
+        armorDefense = Math.max(armorDefense, 0.20);
+        equipStatusText.innerText = "防具: 金の鎧 (軽減 20% & 移動速度UP!)";
         showToast("🟡 金鉱石！金の装備獲得！", "#ffdd33");
       } else if (type === "ore_diamond") {
         swordDamage = 50;
+        armorDefense = 0.60; // ダイヤ防具: 60%カット（超強力）
         swordMesh.material.color.setHex(0x33eeff);
         document.getElementById("weapon-name").innerText = "ダイヤの剣";
-        showToast("💎 ダイヤ鉱石！【ダイヤの剣】獲得！", "#33eeff");
+        equipStatusText.innerText = "防具: ダイヤの鎧 (軽減 60%・超硬化)";
+        showToast("💎 最強の【ダイヤ装備一式】獲得！（攻撃2倍＆防御60%）", "#33eeff");
       } else if (type === "ore_emerald") {
         emeralds++;
         emeraldCountText.innerText = `🟢 ${emeralds}`;
@@ -857,7 +867,7 @@
       }
     };
 
-    // --- クリック攻撃（チーム判定＆頭上HP更新つき） ---
+    // --- クリックアクション ---
     window.addEventListener("mousedown", (e) => {
       if (!isLocked) return;
       isSwinging = true;
@@ -870,25 +880,28 @@
           // ボット攻撃
           for (let i = bots.length - 1; i >= 0; i--) {
             const b = bots[i];
-            // チーム戦で同チームの場合は攻撃無効（フレンドリーファイア防止）
             if (currentRule === "team" && b.team === myTeam) continue;
 
             const hits = raycaster.intersectObjects(b.mesh.children);
             if (hits.length > 0 && hits[0].distance < 4.5) {
-              b.hp -= swordDamage;
+              const dmg = Math.max(5, swordDamage * (1 - b.defense));
+              b.hp -= dmg;
               b.mesh.position.x += Math.sin(yaw) * 1.5;
               b.mesh.position.z -= Math.cos(yaw) * 1.5;
 
-              // 頭上HPバー更新
               updateHpSprite(b.mesh, b.name, b.hp, b.maxHp, b.team);
 
               if (b.hp <= 0) {
+                // ★ ボット死亡時：アイテムをその場にバラ撒く！
+                for (let k = 0; k < 3; k++) spawnDroppedItem(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z, "emerald");
+                if (b.swordDmg >= 50) spawnDroppedItem(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z, "diamond");
+
                 scene.remove(b.mesh);
                 bots.splice(i, 1);
                 kills++;
                 sbKills.innerText = kills;
                 sbAlive.innerText = 1 + Object.keys(otherPlayers).length + bots.length;
-                showToast(`⚔️ ${b.name} を撃破！`, "#55ff55");
+                showToast(`⚔️ ${b.name} を撃破！アイテムを落とした！`, "#55ff55");
               }
               return;
             }
@@ -897,7 +910,7 @@
           // 他プレイヤー攻撃
           for (const id in otherPlayers) {
             const p = otherPlayers[id];
-            if (currentRule === "team" && p.userData.team === myTeam) continue; // 味方は殴れない
+            if (currentRule === "team" && p.userData.team === myTeam) continue;
 
             const hits = raycaster.intersectObjects(p.children);
             if (hits.length > 0 && hits[0].distance < 4.5) {
@@ -907,7 +920,7 @@
           }
         }
 
-        // 採掘 ＆ チェスト
+        // 採掘
         const hits = raycaster.intersectObjects(Object.values(worldBlocks));
         if (hits.length > 0 && hits[0].distance < 5.5) {
           const target = hits[0].object.userData;
@@ -928,7 +941,7 @@
         }
       }
 
-      // 右クリック（ブロック設置 ＆ 自動ブリッジ）
+      // 右クリック
       if (e.button === 2) {
         if (villagerMesh) {
           const vHits = raycaster.intersectObjects(villagerMesh.children);
@@ -953,7 +966,7 @@
             addBlockMesh(nx, ny, nz, type);
             socket.emit("placeBlock", { x: nx, y: ny, z: nz, color: type });
           } else {
-            // The Hive式 前方自動ブリッジ
+            // 前方自動ブリッジ
             const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
             const placeX = Math.floor(camera.position.x + forward.x * 1.5);
             const placeY = Math.floor(camera.position.y - 1.6);
@@ -970,13 +983,13 @@
 
     window.addEventListener("contextmenu", (e) => e.preventDefault());
 
+    // --- ★ 死亡時にアイテムをバラ撒いて全ロスする処理 ---
     function takeDamage(amount) {
-      const realDamage = amount * (1 - armorDefense);
+      const realDamage = Math.max(5, amount * (1 - armorDefense));
       hp = Math.max(0, hp - realDamage);
       updateHearts();
       velocityY = 4.5;
 
-      // サーバーへ自分の最新HPを送信（他プレイヤーの頭上HPバー用）
       if (socket.connected) {
         socket.emit("action", { type: "hpSync", hp: hp });
       }
@@ -985,7 +998,26 @@
       setTimeout(() => document.body.style.backgroundColor = "#111", 100);
 
       if (hp <= 0) {
-        showToast("💀 撃破されました！リスポーンします", "#ff2222");
+        showToast("💀 死亡しました！アイテムをすべて失いました！", "#ff2222");
+
+        // ★★★ 死亡時：持っていたエメラルドを地面にドロップ！（他人が拾える） ★★★
+        const dropCount = Math.min(5, Math.max(1, emeralds));
+        for (let i = 0; i < dropCount; i++) {
+          spawnDroppedItem(camera.position.x, camera.position.y, camera.position.z, "emerald");
+          if (socket.connected) {
+            socket.emit("action", { type: "dropItem", x: camera.position.x, y: camera.position.y, z: camera.position.z, itemType: "emerald" });
+          }
+        }
+
+        // 装備・エメラルドを全ロスト
+        emeralds = 0;
+        armorDefense = 0;
+        swordDamage = 25;
+        swordMesh.material.color.setHex(0x888888);
+        document.getElementById("weapon-name").innerText = "木の剣";
+        equipStatusText.innerText = "防具: なし (軽減 0%)";
+        emeraldCountText.innerText = "🟢 0";
+
         hp = maxHp;
         updateHearts();
         camera.position.copy(spawnPoint);
@@ -1035,6 +1067,41 @@
         }
       }
 
+      // --- ★★★ ドロップアイテムの浮遊回転 ＆ 拾得判定 ★★★
+      for (let i = droppedItems.length - 1; i >= 0; i--) {
+        const d = droppedItems[i];
+        d.mesh.rotation.y += 2.0 * delta; // クルクル回転
+        d.mesh.position.y += Math.sin((time + i*500) / 300) * 0.003;
+
+        // プレイヤーが近づいて拾う
+        const distToPlayer = camera.position.distanceTo(d.mesh.position);
+        if (distToPlayer < 1.6) {
+          if (d.type === "emerald") {
+            emeralds += d.count;
+            emeraldCountText.innerText = `🟢 ${emeralds}`;
+            showToast("🟢 エメラルドを拾った！", "#2ecc71");
+          } else if (d.type === "diamond") {
+            swordDamage = 50;
+            swordMesh.material.color.setHex(0x33eeff);
+            document.getElementById("weapon-name").innerText = "ダイヤの剣";
+            showToast("💎 ダイヤの剣を拾った！", "#33eeff");
+          }
+          scene.remove(d.mesh);
+          droppedItems.splice(i, 1);
+          continue;
+        }
+
+        // ボットが近づいて拾う
+        for (const b of bots) {
+          if (b.mesh.position.distanceTo(d.mesh.position) < 1.6) {
+            b.emeralds += d.count;
+            scene.remove(d.mesh);
+            droppedItems.splice(i, 1);
+            break;
+          }
+        }
+      }
+
       if (isLocked && currentRoom) {
         spawnerTimer += delta;
         if (spawnerTimer >= 3.5) {
@@ -1062,7 +1129,6 @@
         let nextX = camera.position.x + deltaX;
         let nextZ = camera.position.z + deltaZ;
 
-        // Shiftスニーク
         if (isSneaking && checkGroundedAt(camera.position.x, camera.position.y, camera.position.z) !== null) {
           if (checkGroundedAt(nextX, camera.position.y, camera.position.z) === null) nextX = camera.position.x;
           if (checkGroundedAt(camera.position.x, camera.position.y, nextZ) === null) nextZ = camera.position.z;
@@ -1081,40 +1147,78 @@
           if (keys["Space"]) velocityY = 8.0;
         }
 
-        // 奈落死判定
         if (camera.position.y < -15) takeDamage(100);
 
-        // ボットの橋架け移動 ＆ 攻撃
+        // --- ★★★ ボットAI：人間ができるすべてを実行する自律行動 ★★★
         bots.forEach((b, idx) => {
           b.attackCooldown -= delta;
 
-          // チーム戦で仲間ならプレイヤーを襲わない
-          if (currentRule === "team" && b.team === myTeam) return;
-
-          const toPlayer = new THREE.Vector3().subVectors(camera.position, b.mesh.position);
-          toPlayer.y = 0;
-          const dist = toPlayer.length();
-
-          if (dist > 1.8 && dist < 35) {
-            toPlayer.normalize();
-            const step = toPlayer.clone().multiplyScalar(3.2 * delta);
-            const targetPos = b.mesh.position.clone().add(step);
-
-            const botGroundCheckY = Math.floor(targetPos.y - 0.2);
-            const checkKey = `${Math.floor(targetPos.x)},${botGroundCheckY},${Math.floor(targetPos.z)}`;
-
-            // 足場がなければ石ブロックを置いて橋を作る
-            if (!worldBlocks[checkKey]) {
-              const bx = Math.floor(targetPos.x);
-              const bz = Math.floor(targetPos.z);
-              addBlockMesh(bx, botGroundCheckY, bz, "stone");
-              socket.emit("placeBlock", { x: bx, y: botGroundCheckY, z: bz, color: "stone" });
+          // 1. 周囲の鉱石を探して採掘する（パワーアップ行動）
+          if (!b.targetOre) {
+            for (const key in worldBlocks) {
+              const blk = worldBlocks[key];
+              if (blk.userData.type.startsWith("ore_")) {
+                if (b.mesh.position.distanceTo(blk.position) < 8.0) {
+                  b.targetOre = blk.userData;
+                  break;
+                }
+              }
             }
+          }
 
-            b.mesh.position.add(step);
-          } else if (dist <= 1.8 && b.attackCooldown <= 0) {
-            takeDamage(15);
-            b.attackCooldown = 1.2;
+          let moveTarget = null;
+
+          // 鉱石があれば鉱石に向かって掘りに行く
+          if (b.targetOre && worldBlocks[`${b.targetOre.x},${b.targetOre.y},${b.targetOre.z}`]) {
+            moveTarget = new THREE.Vector3(b.targetOre.x + 0.5, b.targetOre.y, b.targetOre.z + 0.5);
+            if (b.mesh.position.distanceTo(moveTarget) < 2.2) {
+              // 鉱石を採掘してボットもパワーアップ！
+              if (b.targetOre.type === "ore_diamond") { b.swordDmg = 50; b.defense = 0.5; }
+              if (b.targetOre.type === "ore_iron") { b.defense = 0.3; }
+              if (b.targetOre.type === "ore_emerald") { b.emeralds += 2; }
+              removeBlockMesh(b.targetOre.x, b.targetOre.y, b.targetOre.z);
+              socket.emit("breakBlock", { x: b.targetOre.x, y: b.targetOre.y, z: b.targetOre.z });
+              b.targetOre = null;
+            }
+          } else {
+            b.targetOre = null;
+          }
+
+          // 鉱石がなければプレイヤーをターゲットにして攻撃へ
+          if (!moveTarget) {
+            if (!(currentRule === "team" && b.team === myTeam)) {
+              moveTarget = camera.position.clone();
+            }
+          }
+
+          // 移動処理 ＆ 橋架け
+          if (moveTarget) {
+            const toTarget = new THREE.Vector3().subVectors(moveTarget, b.mesh.position);
+            toTarget.y = 0;
+            const dist = toTarget.length();
+
+            if (dist > 1.8 && dist < 40) {
+              toTarget.normalize();
+              const step = toTarget.clone().multiplyScalar(3.2 * delta);
+              const targetPos = b.mesh.position.clone().add(step);
+
+              const botGroundCheckY = Math.floor(targetPos.y - 0.2);
+              const checkKey = `${Math.floor(targetPos.x)},${botGroundCheckY},${Math.floor(targetPos.z)}`;
+
+              // 足場がなければ石ブロックを置いて橋を架ける
+              if (!worldBlocks[checkKey]) {
+                const bx = Math.floor(targetPos.x);
+                const bz = Math.floor(targetPos.z);
+                addBlockMesh(bx, botGroundCheckY, bz, "stone");
+                socket.emit("placeBlock", { x: bx, y: botGroundCheckY, z: bz, color: "stone" });
+              }
+
+              b.mesh.position.add(step);
+            } else if (dist <= 1.8 && b.attackCooldown <= 0) {
+              // 射程内ならプレイヤーを攻撃
+              takeDamage(b.swordDmg * 0.6);
+              b.attackCooldown = 1.2;
+            }
           }
 
           // ボットの重力＆奈落死
