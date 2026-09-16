@@ -51,19 +51,13 @@
     button { background: #2e7d32; cursor: pointer; border: 2px solid #1b5e20; font-weight: bold; }
     button:hover { background: #388e3c; }
 
-    /* フレンドバー */
     .id-badge { background: #333; padding: 4px 10px; border-radius: 4px; border: 1px solid #777; color: #f1c40f; font-weight: bold; }
     .friend-box { display: flex; gap: 10px; align-items: center; background: #1a1a1a; padding: 8px 12px; border-radius: 4px; border: 1px solid #444; margin-top: 10px; }
 
     .room-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 15px; }
     .room-card {
-      background: #222;
-      border: 2px solid #444;
-      border-radius: 4px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      background: #222; border: 2px solid #444; border-radius: 4px; padding: 14px;
+      display: flex; flex-direction: column; justify-content: space-between;
     }
     .mode-tag { display: inline-block; padding: 3px 6px; font-size: 11px; font-weight: bold; margin: 4px 0; border: 1px solid #fff; }
     .mode-skywars { background: #e67e22; }
@@ -86,9 +80,15 @@
       border: 2px solid #555;
     }
     #hud button { margin-top: 6px; padding: 5px 10px; font-size: 11px; }
+    #equip-status { font-size: 12px; color: #55ffff; margin-top: 5px; }
 
-    #equip-status {
-      font-size: 12px; color: #55ffff; margin-top: 5px;
+    /* ゲーム内通知メッセージ（alertの代わり） */
+    #game-toast {
+      position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75); border: 2px solid #f1c40f; color: #fff;
+      padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold;
+      z-index: 30; pointer-events: none; display: none; text-shadow: 1px 1px 2px #000;
+      animation: fadeIn 0.2s ease-in;
     }
 
     /* ハート型HPバー */
@@ -97,7 +97,6 @@
       display: flex; gap: 3px; z-index: 10; font-size: 20px;
     }
 
-    /* エメラルド所持数 */
     #emerald-count {
       position: absolute; bottom: 85px; left: calc(50% + 150px);
       z-index: 10; font-size: 18px; color: #2ecc71; font-weight: bold; text-shadow: 2px 2px 0 #000;
@@ -120,7 +119,7 @@
     /* 村人交易モーダル */
     #trade-modal {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.9); border: 3px solid #55a832; border-radius: 6px;
+      background: rgba(0,0,0,0.92); border: 3px solid #55a832; border-radius: 6px;
       padding: 20px; z-index: 150; display: none; width: 340px; text-align: center;
     }
     .trade-item { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 8px; margin: 6px 0; border: 1px solid #444; }
@@ -139,7 +138,6 @@
         <span class="id-badge" id="my-id-badge">ID: 読み込み中...</span>
       </div>
 
-      <!-- フレンド機能 -->
       <div class="friend-box">
         <input type="text" id="friend-input" placeholder="フレンドIDを入力" style="flex: 1; padding: 6px 10px;">
         <button id="btn-add-friend" style="padding: 6px 12px;">フレンド追加</button>
@@ -178,6 +176,9 @@
     </div>
   </div>
 
+  <!-- ゲーム内通知トースト -->
+  <div id="game-toast"></div>
+
   <!-- ハートゲージ ＆ エメラルド -->
   <div id="hearts-container"></div>
   <div id="emerald-count">🟢 0</div>
@@ -190,7 +191,7 @@
     <div class="slot" data-slot="4"><span class="slot-key">4</span><span style="color:#aa5500">■</span><span>木</span></div>
   </div>
 
-  <!-- 村人の交易画面 -->
+  <!-- 村人交易 -->
   <div id="trade-modal">
     <h3 style="color: #2ecc71; margin-top: 0;">村人のショップ</h3>
     <div class="trade-item">
@@ -212,6 +213,17 @@
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <script>
+    // --- 通知トースト（alertの完全撤廃） ---
+    let toastTimer = null;
+    function showToast(msg, color = "#f1c40f") {
+      const toast = document.getElementById("game-toast");
+      toast.innerText = msg;
+      toast.style.borderColor = color;
+      toast.style.display = "block";
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.style.display = "none"; }, 2500);
+    }
+
     // --- プレイヤーID ＆ フレンド管理 ---
     let myPlayerId = localStorage.getItem("mc_pvp_uid") || ("#" + Math.floor(1000 + Math.random() * 9000));
     localStorage.setItem("mc_pvp_uid", myPlayerId);
@@ -230,18 +242,18 @@
         localStorage.setItem("mc_pvp_friends", JSON.stringify(friends));
         updateFriendDisplay();
         document.getElementById("friend-input").value = "";
+        showToast("フレンドを追加しました: " + f, "#2ecc71");
       }
     });
 
-    // --- 輪郭（切れ目）クッキリ 16x16 マイクラ風ドット絵テクスチャ生成 ---
-    function makeBlockTexture(baseColor, dotColor, borderDark = true) {
+    // --- 輪郭クッキリ 16x16 マイクラ風ドット絵テクスチャ ---
+    function makeBlockTexture(baseColor, dotColor, isGrass = false) {
       const cvs = document.createElement("canvas");
       cvs.width = 16; cvs.height = 16;
       const ctx = cvs.getContext("2d");
       ctx.fillStyle = baseColor;
       ctx.fillRect(0, 0, 16, 16);
 
-      // ドットノイズ
       for (let x = 1; x < 15; x++) {
         for (let y = 1; y < 15; y++) {
           if (Math.random() > 0.65) {
@@ -251,12 +263,10 @@
         }
       }
 
-      // ★ブロックの切れ目をハッキリ出す枠線処理
-      if (borderDark) {
-        ctx.strokeStyle = "rgba(0,0,0,0.55)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(0.5, 0.5, 15, 15);
-      }
+      // ブロックの切れ目をくっきり出す外枠
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0.5, 0.5, 15, 15);
 
       const tex = new THREE.CanvasTexture(cvs);
       tex.magFilter = THREE.NearestFilter;
@@ -264,7 +274,6 @@
       return tex;
     }
 
-    // 鉱石テクスチャ生成（石ベースに宝石の粒）
     function makeOreTexture(oreColor) {
       const cvs = document.createElement("canvas");
       cvs.width = 16; cvs.height = 16;
@@ -272,16 +281,13 @@
       ctx.fillStyle = "#7f7f7f";
       ctx.fillRect(0, 0, 16, 16);
 
-      // 石ノイズ
       ctx.fillStyle = "#666";
       for (let i = 0; i < 20; i++) ctx.fillRect(Math.random()*14+1, Math.random()*14+1, 1, 1);
 
-      // 鉱石の結晶
       ctx.fillStyle = oreColor;
       const spots = [[3,3],[4,3],[3,4],[10,10],[11,10],[10,11],[6,11],[12,4],[11,5]];
       spots.forEach(([x,y]) => ctx.fillRect(x, y, 2, 2));
 
-      // 枠線
       ctx.strokeStyle = "rgba(0,0,0,0.6)";
       ctx.lineWidth = 1;
       ctx.strokeRect(0.5, 0.5, 15, 15);
@@ -297,7 +303,6 @@
     const matStone = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#7f7f7f", "#5c5c5c") });
     const matWood  = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#9e7a44", "#7d5d2e") });
 
-    // 鉱石マテリアル
     const matOreRedstone = new THREE.MeshLambertMaterial({ map: makeOreTexture("#ff2222") });
     const matOreIron     = new THREE.MeshLambertMaterial({ map: makeOreTexture("#d8af93") });
     const matOreGold     = new THREE.MeshLambertMaterial({ map: makeOreTexture("#ffdd33") });
@@ -311,13 +316,14 @@
       ore_diamond: matOreDiamond, ore_emerald: matOreEmerald
     };
 
-    // --- ゲーム内変数 ＆ 装備ステータス ---
+    // --- ゲーム内変数 ---
     let maxHp = 100;
     let hp = 100;
     let emeralds = 0;
     let swordDamage = 25;
-    let armorDefense = 0; // 防御軽減率
-    let bots = []; // CPUボット一覧
+    let armorDefense = 0;
+    let bots = [];
+    let spawnPoint = new THREE.Vector3(25, 13, 0); // 安全な初期リスポーン地点
 
     const heartsContainer = document.getElementById("hearts-container");
     const emeraldCountText = document.getElementById("emerald-count");
@@ -335,7 +341,7 @@
     }
     updateHearts();
 
-    // --- 通信処理 ---
+    // --- Socket.io 通信 ---
     const socket = io(window.location.origin, {
       transports: ["polling", "websocket"],
       reconnection: true
@@ -352,7 +358,6 @@
     const gameStatus = document.getElementById("game-status");
     const connStatus = document.getElementById("conn-status");
 
-    // スロット切り替え
     window.addEventListener("keydown", (e) => {
       if (["1", "2", "3", "4"].includes(e.key)) {
         selectedSlot = parseInt(e.key);
@@ -363,7 +368,7 @@
     });
 
     document.getElementById("btn-create-room").addEventListener("click", () => {
-      if (!socket.connected) return alert("サーバーに接続されていません！");
+      if (!socket.connected) return showToast("サーバーに接続されていません！", "#ff2222");
       const name = document.getElementById("new-room-name").value.trim();
       const mode = document.getElementById("new-room-mode").value;
       socket.emit("createRoom", { name, mode });
@@ -410,12 +415,16 @@
       document.body.requestPointerLock();
 
       roomInfo.innerText = `[${currentRoom.mode.toUpperCase()}] ${currentRoom.name}`;
-      gameStatus.innerText = "鉱石を掘って装備を強化！村人とエメラルドで取引しよう！";
+      gameStatus.innerText = "鉱石を掘って装備強化！村人と交易しよう！";
 
       initMap(currentRoom.mode, data.blocks);
+      showToast("部屋に参加しました！", "#2ecc71");
     });
 
-    socket.on("playerJoinedRoom", (player) => addOtherPlayer(player));
+    socket.on("playerJoinedRoom", (player) => {
+      addOtherPlayer(player);
+      showToast(`${player.name} が参加しました！`, "#55ffff");
+    });
     socket.on("playerMoved", (pos) => {
       if (otherPlayers[pos.id]) {
         otherPlayers[pos.id].position.set(pos.x, pos.y, pos.z);
@@ -445,10 +454,10 @@
     // --- Three.js グラフィックス初期化 ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x78a7ff);
-    scene.fog = new THREE.Fog(0x78a7ff, 40, 110);
+    scene.fog = new THREE.Fog(0x78a7ff, 35, 100);
 
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    // ★★★ 超重要：傾き（Roll）を完全に防止する設定 ★★★
+    // 傾き（Roll）完全防止
     camera.rotation.order = 'YXZ';
 
     const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -460,28 +469,30 @@
     scene.add(dirLight);
     scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
-    // ワイヤー枠（見ているブロックの枠線表示）
+    // ブロック枠線
     const outlineGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002));
     const outlineMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
     const blockOutline = new THREE.LineSegments(outlineGeo, outlineMat);
     blockOutline.visible = false;
     scene.add(blockOutline);
 
-    // --- 1人称の腕 ＆ 剣 ---
+    // --- 1人称の腕 ＆ 剣（視界を邪魔しないコンパクト設計） ---
     const handGroup = new THREE.Group();
-    const armMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.2), new THREE.MeshLambertMaterial({ color: 0x00aaaa }));
-    armMesh.position.set(0.35, -0.35, -0.5);
-    armMesh.rotation.set(-0.2, 0.1, -0.2);
+    // 腕（サイズを小さく、自然な右下位置に調整）
+    const armMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.45, 0.14), new THREE.MeshLambertMaterial({ color: 0x00aaaa }));
+    armMesh.position.set(0.28, -0.28, -0.45);
+    armMesh.rotation.set(-0.2, 0.1, -0.15);
     handGroup.add(armMesh);
 
-    const swordMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.05), new THREE.MeshLambertMaterial({ color: 0x888888 }));
-    swordMesh.position.set(0.35, -0.15, -0.6);
-    swordMesh.rotation.set(0.6, 0.2, -0.3);
+    // 剣
+    const swordMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.55, 0.03), new THREE.MeshLambertMaterial({ color: 0x888888 }));
+    swordMesh.position.set(0.28, -0.12, -0.5);
+    swordMesh.rotation.set(0.5, 0.2, -0.2);
     handGroup.add(swordMesh);
     camera.add(handGroup);
     scene.add(camera);
 
-    // --- ブロック＆鉱石管理 ---
+    // --- ブロック管理 ---
     const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
     function addBlockMesh(x, y, z, type = "grass") {
@@ -490,7 +501,7 @@
       const mat = matByType[type] || matGrass;
       const mesh = new THREE.Mesh(boxGeo, mat);
       mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
-      mesh.userData = { x, y, z, type, isBed: type === "bed", isVillager: false };
+      mesh.userData = { x, y, z, type, isBed: type === "bed" };
       scene.add(mesh);
       worldBlocks[key] = mesh;
     }
@@ -503,27 +514,23 @@
       }
     }
 
-    // --- 村人NPCの生成 ---
+    // --- 村人NPC ---
     let villagerMesh = null;
     function spawnVillager(x, y, z) {
       const group = new THREE.Group();
-      // 体 (茶色ローブ)
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.0, 0.4), new THREE.MeshLambertMaterial({ color: 0x6e3c1b }));
       body.position.y = 1.0;
-      // 頭
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.5, 0.45), new THREE.MeshLambertMaterial({ color: 0xb57a4c }));
       head.position.y = 1.65;
-      // 村人の長い鼻
       const nose = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.12), new THREE.MeshLambertMaterial({ color: 0x9c653a }));
       nose.position.set(0, 1.55, 0.28);
       group.add(body); group.add(head); group.add(nose);
       group.position.set(x, y, z);
-      group.userData = { isVillager: true };
       scene.add(group);
       villagerMesh = group;
     }
 
-    // --- ボット（CPU）システム ---
+    // --- ボット（CPU）補充 ---
     function spawnBot(x, y, z, name) {
       const group = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), new THREE.MeshLambertMaterial({ color: 0xe74c3c }));
@@ -538,19 +545,18 @@
         mesh: group,
         hp: 100,
         name: name,
-        velY: 0
+        attackCooldown: 0
       });
     }
 
     document.getElementById("btn-add-bots").addEventListener("click", () => {
-      // 3体のボットを補充
+      // 離れた島にボットを配置（プレイヤーの真上には置かない）
       spawnBot(0, 11, 0, "Bot_Alex");
-      spawnBot(-25, 11, 0, "Bot_Zombie");
-      spawnBot(0, 11, 25, "Bot_Creeper");
-      alert("🤖 ボットを3体補充しました！試合を開始します！");
+      spawnBot(-20, 11, 0, "Bot_Zombie");
+      showToast("🤖 ボットを補充しました！試合開始！", "#e67e22");
     });
 
-    // --- マップ生成（鉱石埋め込み） ---
+    // --- 浮島生成 ---
     function createIsland(cx, cy, cz, radius) {
       for (let x = -radius; x <= radius; x++) {
         for (let z = -radius; z <= radius; z++) {
@@ -561,7 +567,6 @@
 
             const depth = Math.floor((radius - dist) * 1.6);
             for (let dy = 2; dy <= depth + 2; dy++) {
-              // 鉱石のランダム配置
               let bType = "stone";
               const r = Math.random();
               if (r < 0.05) bType = "ore_diamond";
@@ -581,15 +586,16 @@
       cleanupGameWorld();
 
       if (mode === "skywars") {
-        createIsland(0, 10, 0, 6); // 中央島
-        spawnVillager(0, 11, -3);   // 中央島に村人を配置！
+        createIsland(0, 10, 0, 6);
+        spawnVillager(0, 11, -3);
 
-        // プレイヤー島
         createIsland(25, 10, 0, 3);
         createIsland(-25, 10, 0, 3);
         createIsland(0, 10, 25, 3);
         createIsland(0, 10, -25, 3);
-        camera.position.set(25, 12.6, 0);
+
+        spawnPoint.set(25, 13, 0); // プレイヤー島にスポーン
+        camera.position.copy(spawnPoint);
       } else if (mode === "bedwars") {
         createIsland(-20, 10, 0, 5);
         createIsland(20, 10, 0, 5);
@@ -597,11 +603,14 @@
         spawnVillager(-18, 11, 2);
         addBlockMesh(-20, 11, 0, "bed");
         addBlockMesh(20, 11, 0, "bed");
-        camera.position.set(-20, 12.6, 0);
+
+        spawnPoint.set(-20, 13, 0); // 自陣島にスポーン
+        camera.position.copy(spawnPoint);
       } else {
         createIsland(0, 5, 0, 8);
         spawnVillager(0, 6, -2);
-        camera.position.set(0, 7.6, 6);
+        spawnPoint.set(0, 8, 4);
+        camera.position.copy(spawnPoint);
       }
 
       if (existingBlocks) {
@@ -634,9 +643,9 @@
       otherPlayers[p.id] = group;
     }
 
-    // --- カメラ操作（絶対に傾かない完全固定ロジック） ---
+    // --- カメラ操作（絶対に傾かないYXZ） ---
     let isLocked = false, pitch = 0, yaw = 0;
-    let playerY = 12.6, velocityY = 0;
+    let velocityY = 0;
     const keys = {};
     let isSwinging = false, swingAngle = 0;
 
@@ -651,15 +660,13 @@
 
     document.addEventListener("mousemove", (e) => {
       if (!isLocked) return;
-      // 左右と上下のみを更新
       yaw -= e.movementX * 0.0025;
       pitch -= e.movementY * 0.0025;
       pitch = Math.max(-Math.PI / 2.05, Math.min(Math.PI / 2.05, pitch));
 
-      // ★Z軸（傾き・Roll）を常に0に保つ
       camera.rotation.y = yaw;
       camera.rotation.x = pitch;
-      camera.rotation.z = 0;
+      camera.rotation.z = 0; // 傾きゼロ固定
     });
 
     window.addEventListener("keydown", (e) => {
@@ -668,33 +675,33 @@
     });
     window.addEventListener("keyup", (e) => keys[e.code] = false);
 
-    // --- 採掘時の鉱石ドロップ ＆ パワーアップ ---
+    // --- 鉱石採掘効果 ---
     function handleOreBreak(type) {
       if (type === "ore_redstone") {
         maxHp += 10;
         hp = maxHp;
         updateHearts();
-        alert("❤️ レッドストーンを採掘！体力の最大値が+10され全回復！");
+        showToast("❤️ レッドストーン！最大体力+10＆全回復！", "#ff2222");
       } else if (type === "ore_iron") {
         armorDefense = Math.min(0.5, armorDefense + 0.15);
-        equipStatusText.innerText = `装備: 鉄の防具 (ダメージ軽減 ${(armorDefense*100).toFixed(0)}%)`;
-        alert("🛡️ 鉄鉱石を採掘！鉄の防具を装備（被ダメージ減少）！");
+        equipStatusText.innerText = `装備: 鉄の防具 (軽減 ${(armorDefense*100).toFixed(0)}%)`;
+        showToast("🛡️ 鉄鉱石！鉄の防具を装備！", "#d8af93");
       } else if (type === "ore_gold") {
-        equipStatusText.innerText = "装備: 金の防具 (移動速度アップ!)";
-        alert("🟡 金鉱石を採掘！金の装備を獲得（ダッシュ速度UP）！");
+        equipStatusText.innerText = "装備: 金の防具 (移動速度UP!)";
+        showToast("🟡 金鉱石！金の装備獲得（ダッシュ速度UP）！", "#ffdd33");
       } else if (type === "ore_diamond") {
         swordDamage = 50;
-        swordMesh.material.color.setHex(0x33eeff); // ダイヤ色
+        swordMesh.material.color.setHex(0x33eeff);
         document.getElementById("weapon-name").innerText = "ダイヤの剣";
-        alert("💎 ダイヤ鉱石を採掘！最強の【ダイヤの剣】を獲得！（攻撃力2倍）");
+        showToast("💎 ダイヤ鉱石！最強の【ダイヤの剣】獲得！", "#33eeff");
       } else if (type === "ore_emerald") {
         emeralds++;
         emeraldCountText.innerText = `🟢 ${emeralds}`;
-        alert("🟢 エメラルドを獲得！村人と交易しよう！");
+        showToast("🟢 エメラルド獲得！村人と取引しよう！", "#2ecc71");
       }
     }
 
-    // --- 村人交易モーダル ---
+    // --- 村人ショップ ---
     function toggleTrade() {
       const modal = document.getElementById("trade-modal");
       if (modal.style.display === "block") {
@@ -708,25 +715,25 @@
     window.closeTrade = toggleTrade;
 
     window.buyItem = function(item, cost) {
-      if (emeralds < cost) return alert("エメラルドが足りません！");
+      if (emeralds < cost) return showToast("エメラルドが足りません！", "#ff4444");
       emeralds -= cost;
       emeraldCountText.innerText = `🟢 ${emeralds}`;
 
       if (item === "golden_apple") {
         hp = maxHp;
         updateHearts();
-        alert("🍎 金のリンゴを食べた！全回復！");
+        showToast("🍎 金のリンゴを食べた！全回復！", "#f1c40f");
       } else if (item === "blocks") {
-        alert("🧱 石ブロックを大量購入しました！");
+        showToast("🧱 石ブロックを大量購入！", "#aaaaaa");
       } else if (item === "diamond_sword") {
         swordDamage = 60;
         swordMesh.material.color.setHex(0x33eeff);
         document.getElementById("weapon-name").innerText = "ダイヤの剣+";
-        alert("💎 特製ダイヤの剣を購入！");
+        showToast("💎 特製ダイヤの剣を購入！", "#33eeff");
       }
     };
 
-    // --- クリックアクション（攻撃・採掘・村人クリック・設置） ---
+    // --- クリックアクション ---
     window.addEventListener("mousedown", (e) => {
       if (!isLocked) return;
       isSwinging = true;
@@ -734,10 +741,9 @@
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
-      // 1. 左クリック: 攻撃 または 採掘
       if (e.button === 0) {
         if (selectedSlot === 1) {
-          // ボットへの攻撃
+          // ボット攻撃
           for (let i = bots.length - 1; i >= 0; i--) {
             const b = bots[i];
             const hits = raycaster.intersectObjects(b.mesh.children);
@@ -748,13 +754,13 @@
               if (b.hp <= 0) {
                 scene.remove(b.mesh);
                 bots.splice(i, 1);
-                alert(`⚔️ ${b.name} を撃破しました！`);
+                showToast(`⚔️ ${b.name} を撃破！`, "#55ff55");
               }
               return;
             }
           }
 
-          // 他プレイヤーへの攻撃
+          // プレイヤー攻撃
           for (const id in otherPlayers) {
             const hits = raycaster.intersectObjects(otherPlayers[id].children);
             if (hits.length > 0 && hits[0].distance < 4.0) {
@@ -764,19 +770,17 @@
           }
         }
 
-        // ブロック採掘
+        // ブロック破壊
         const hits = raycaster.intersectObjects(Object.values(worldBlocks));
         if (hits.length > 0 && hits[0].distance < 5.5) {
           const target = hits[0].object.userData;
-          handleOreBreak(target.type); // 鉱石効果発動
+          handleOreBreak(target.type);
           removeBlockMesh(target.x, target.y, target.z);
           socket.emit("breakBlock", { x: target.x, y: target.y, z: target.z });
         }
       }
 
-      // 2. 右クリック: 村人との会話 または ブロック設置
       if (e.button === 2) {
-        // 村人右クリック
         if (villagerMesh) {
           const vHits = raycaster.intersectObjects(villagerMesh.children);
           if (vHits.length > 0 && vHits[0].distance < 4.5) {
@@ -785,7 +789,6 @@
           }
         }
 
-        // ブロック設置
         if (selectedSlot !== 1) {
           const hits = raycaster.intersectObjects(Object.values(worldBlocks));
           if (hits.length > 0 && hits[0].distance < 5.5) {
@@ -806,25 +809,43 @@
 
     window.addEventListener("contextmenu", (e) => e.preventDefault());
 
+    // --- ダメージ ＆ 安全なリスポーン処理 ---
     function takeDamage(amount) {
       const realDamage = amount * (1 - armorDefense);
       hp = Math.max(0, hp - realDamage);
       updateHearts();
-      velocityY = 5;
+      velocityY = 4.5;
 
-      document.body.style.backgroundColor = "rgba(255,0,0,0.4)";
+      document.body.style.backgroundColor = "rgba(255,0,0,0.35)";
       setTimeout(() => document.body.style.backgroundColor = "#111", 100);
 
       if (hp <= 0) {
-        alert("撃破されました！リスポーンします。");
+        showToast("💀 撃破されました！リスポーンします", "#ff2222");
         hp = maxHp;
         updateHearts();
-        camera.position.set(0, 20, 0);
+        // ★足場のある安全な初期島にテレポート（落下死無限ループ解消）
+        camera.position.copy(spawnPoint);
         velocityY = 0;
       }
     }
 
-    // --- メインゲームループ ---
+    // --- 強固な接地判定（足元4隅チェックですり抜け防止） ---
+    function isGrounded() {
+      const checkY = Math.floor(camera.position.y - 1.6);
+      const offsets = [
+        [0.2, 0.2], [-0.2, 0.2], [0.2, -0.2], [-0.2, -0.2], [0, 0]
+      ];
+      for (const [ox, oz] of offsets) {
+        const bx = Math.floor(camera.position.x + ox);
+        const bz = Math.floor(camera.position.z + oz);
+        if (worldBlocks[`${bx},${checkY},${bz}`]) {
+          return checkY + 2.5;
+        }
+      }
+      return null;
+    }
+
+    // --- メインループ ---
     let prevTime = performance.now();
     function animate() {
       requestAnimationFrame(animate);
@@ -832,7 +853,6 @@
       const delta = (time - prevTime) / 1000;
       prevTime = time;
 
-      // 見ているブロックのワイヤー枠線ハイライト
       if (isLocked) {
         const ray = new THREE.Raycaster();
         ray.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -845,10 +865,9 @@
         }
       }
 
-      // 腕のスイング
       if (isSwinging) {
-        swingAngle += delta * 22;
-        handGroup.rotation.x = Math.sin(swingAngle) * 0.7;
+        swingAngle += delta * 24;
+        handGroup.rotation.x = Math.sin(swingAngle) * 0.6;
         if (swingAngle >= Math.PI) {
           isSwinging = false;
           swingAngle = 0;
@@ -857,8 +876,7 @@
       }
 
       if (isLocked && currentRoom) {
-        // 移動速度（金装備でアップ）
-        const moveSpeed = armorDefense > 0.2 ? 10.5 : 8.5;
+        const moveSpeed = armorDefense > 0.2 ? 10.0 : 8.0;
         const moveVec = new THREE.Vector3();
         if (keys["KeyW"]) moveVec.z -= 1;
         if (keys["KeyS"]) moveVec.z += 1;
@@ -871,30 +889,36 @@
         camera.position.addScaledVector(forward, -moveVec.z * moveSpeed * delta);
         camera.position.addScaledVector(right, moveVec.x * moveSpeed * delta);
 
+        // 重力
         velocityY -= 22 * delta;
         camera.position.y += velocityY * delta;
 
-        // 接地判定
-        const bKey = `${Math.floor(camera.position.x)},${Math.floor(camera.position.y - 1.6)},${Math.floor(camera.position.z)}`;
-        if (worldBlocks[bKey] && velocityY < 0) {
-          camera.position.y = Math.floor(camera.position.y - 1.6) + 2.5;
+        // ★強化版接地判定（絶対に床が抜けない）
+        const groundY = isGrounded();
+        if (groundY !== null && velocityY < 0 && camera.position.y <= groundY + 0.1) {
+          camera.position.y = groundY;
           velocityY = 0;
-          if (keys["Space"]) velocityY = 8.0;
+          if (keys["Space"]) velocityY = 8.0; // ジャンプ
         }
 
-        // 奈落落下死
-        if (camera.position.y < -15) takeDamage(100);
+        // 奈落落下死判定（安全な初期島へ復帰）
+        if (camera.position.y < -15) {
+          takeDamage(100);
+        }
 
-        // ボットのAI移動（プレイヤーを追いかけて殴る）
+        // ボットのAI移動（攻撃クールダウン付きで瞬殺を防止）
         bots.forEach(b => {
+          b.attackCooldown -= delta;
           const toPlayer = new THREE.Vector3().subVectors(camera.position, b.mesh.position);
           toPlayer.y = 0;
           const dist = toPlayer.length();
-          if (dist > 1.8 && dist < 30) {
+
+          if (dist > 1.8 && dist < 25) {
             toPlayer.normalize();
-            b.mesh.position.addScaledVector(toPlayer, 4.0 * delta);
-          } else if (dist <= 1.8) {
-            takeDamage(8 * delta); // ボットからの攻撃
+            b.mesh.position.addScaledVector(toPlayer, 3.5 * delta);
+          } else if (dist <= 1.8 && b.attackCooldown <= 0) {
+            takeDamage(15); // 1.2秒に1回だけ攻撃（ハメ殺し防止）
+            b.attackCooldown = 1.2;
           }
         });
 
