@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>The Hive PvP Online</title>
+  <title>The Hive PvP Online Ultra</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -63,6 +63,7 @@
     .mode-skywars { background: #e67e22; }
     .mode-bedwars { background: #c0392b; }
     .mode-custom { background: #2980b9; }
+    .rule-tag { display: inline-block; padding: 2px 5px; font-size: 10px; background: #555; border-radius: 3px; margin-left: 4px; }
 
     /* クロスヘア */
     #crosshair {
@@ -81,18 +82,17 @@
     }
     #hud button { margin-top: 6px; padding: 5px 10px; font-size: 11px; }
 
-    /* ★ The Hive名物：画面右側のマイクラ公式風スコアボード ★ */
+    /* スコアボード */
     #scoreboard {
       position: absolute; top: 80px; right: 15px; z-index: 10;
       background: rgba(0, 0, 0, 0.65); border: 2px solid #444; border-radius: 4px;
-      padding: 12px 16px; width: 190px; font-size: 13px; line-height: 1.6;
+      padding: 12px 16px; width: 200px; font-size: 13px; line-height: 1.6;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
     .sb-title { text-align: center; color: #f1c40f; font-weight: bold; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 6px; }
     .sb-row { display: flex; justify-content: space-between; }
     .sb-val { color: #2ecc71; font-weight: bold; }
 
-    /* 通知トースト */
     #game-toast {
       position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.85); border: 2px solid #f1c40f; color: #fff;
@@ -100,7 +100,6 @@
       z-index: 30; pointer-events: none; display: none; text-shadow: 1px 1px 2px #000;
     }
 
-    /* ハートゲージ ＆ エメラルド */
     #hearts-container {
       position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%);
       display: flex; gap: 3px; z-index: 10; font-size: 20px;
@@ -153,14 +152,19 @@
       </div>
     </div>
 
+    <!-- 部屋作成エリア（対戦ルール選択つき！） -->
     <div class="lobby-box" id="rooms-section">
       <h3 style="margin-top: 0; color: #f1c40f;">部屋を作成する</h3>
       <div class="input-group">
         <input type="text" id="new-room-name" placeholder="部屋の名前" style="flex: 2;">
-        <select id="new-room-mode" style="flex: 1;">
-          <option value="skywars">SkyWars (浮島PvP)</option>
-          <option value="bedwars">BedWars (ベッド防衛戦)</option>
-          <option value="custom">カスタム建築 (自由作成)</option>
+        <select id="new-room-mode" style="flex: 1.2;">
+          <option value="skywars">SkyWars (超巨大浮島)</option>
+          <option value="bedwars">BedWars (要塞拠点戦)</option>
+          <option value="custom">フラットワールド (広大な平原建築)</option>
+        </select>
+        <select id="new-room-rule" style="flex: 1;">
+          <option value="solo">個人戦 (ソロ)</option>
+          <option value="team">チーム戦 (赤 vs 青)</option>
         </select>
         <button id="btn-create-room">部屋を作成</button>
       </div>
@@ -175,6 +179,7 @@
   <div id="crosshair"></div>
   <div id="hud">
     <div id="room-info" style="font-weight: bold; font-size: 15px; color: #f1c40f;"></div>
+    <div id="my-team-info" style="font-size: 12px; color: #fff; margin-top: 3px;"></div>
     <div style="font-size: 11px; color: #00ffff; margin-top: 4px;">🚀 前を向いて右クリックで自動ブリッジ！</div>
     <div style="display: flex; gap: 6px; margin-top: 8px;">
       <button id="btn-add-bots" style="background: #e67e22;">🤖 ボット補充で試合開始</button>
@@ -182,14 +187,13 @@
     </div>
   </div>
 
-  <!-- ★ The Hive風スコアボード ★ -->
   <div id="scoreboard">
     <div class="sb-title">THE HIVE</div>
-    <div class="sb-row"><span>ゲーム:</span><span class="sb-val" id="sb-mode">SKYWARS</span></div>
-    <div class="sb-row"><span>マップ:</span><span class="sb-val" id="sb-map">Islands</span></div>
-    <div class="sb-row"><span>撃破数:</span><span class="sb-val" id="sb-kills">0</span></div>
+    <div class="sb-row"><span>モード:</span><span class="sb-val" id="sb-mode">SKYWARS</span></div>
+    <div class="sb-row"><span>ルール:</span><span class="sb-val" id="sb-rule">個人戦</span></div>
+    <div class="sb-row"><span>キル数:</span><span class="sb-val" id="sb-kills">0</span></div>
     <div class="sb-row"><span>生存者:</span><span class="sb-val" id="sb-alive">4</span></div>
-    <div class="sb-row"><span>ベッド:</span><span class="sb-val" id="sb-bed">生きてる</span></div>
+    <div class="sb-row"><span>ベッド:</span><span class="sb-val" id="sb-bed">なし</span></div>
     <div style="margin-top: 8px; font-size: 10px; color: #888; text-align: center;">hive.net</div>
   </div>
 
@@ -217,7 +221,7 @@
       <button onclick="buyItem('blocks', 2)">2 🟢</button>
     </div>
     <div class="trade-item">
-      <span>💎 ダイヤの剣 (超高攻撃力)</span>
+      <span>💎 ダイヤの剣 (超高威力)</span>
       <button onclick="buyItem('diamond_sword', 4)">4 🟢</button>
     </div>
     <button onclick="closeTrade()" style="margin-top: 10px; background: #666; width: 100%;">閉じる (ESC)</button>
@@ -305,6 +309,7 @@
     const matDirt  = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#866043", "#684830") });
     const matStone = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#7f7f7f", "#5c5c5c") });
     const matWood  = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#9e7a44", "#7d5d2e") });
+    const matBedrock = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#333333", "#111111") });
 
     const matOreRedstone = new THREE.MeshLambertMaterial({ map: makeOreTexture("#ff2222") });
     const matOreIron     = new THREE.MeshLambertMaterial({ map: makeOreTexture("#d8af93") });
@@ -312,11 +317,11 @@
     const matOreDiamond  = new THREE.MeshLambertMaterial({ map: makeOreTexture("#33eeff") });
     const matOreEmerald  = new THREE.MeshLambertMaterial({ map: makeOreTexture("#11dd44") });
     const matBed         = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#c0392b", "#e74c3c") });
-    const matChest       = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#d35400", "#f39c12") }); // 宝箱
-    const matSpawner     = new THREE.MeshLambertMaterial({ color: 0x9b59b6, wireframe: false }); // スポナー
+    const matChest       = new THREE.MeshLambertMaterial({ map: makeBlockTexture("#d35400", "#f39c12") });
+    const matSpawner     = new THREE.MeshLambertMaterial({ color: 0x9b59b6 });
 
     const matByType = {
-      grass: matGrass, dirt: matDirt, stone: matStone, wood: matWood, bed: matBed, chest: matChest, spawner: matSpawner,
+      grass: matGrass, dirt: matDirt, stone: matStone, wood: matWood, bedrock: matBedrock, bed: matBed, chest: matChest, spawner: matSpawner,
       ore_redstone: matOreRedstone, ore_iron: matOreIron, ore_gold: matOreGold,
       ore_diamond: matOreDiamond, ore_emerald: matOreEmerald
     };
@@ -328,8 +333,10 @@
     let emeralds = 0;
     let swordDamage = 25;
     let armorDefense = 0;
+    let myTeam = "red"; // "red" | "blue" | "solo"
+    let currentRule = "solo"; // "solo" | "team"
     let bots = [];
-    let spawnPoint = new THREE.Vector3(14, 13, 0);
+    let spawnPoint = new THREE.Vector3(20, 13, 0);
 
     const heartsContainer = document.getElementById("hearts-container");
     const emeraldCountText = document.getElementById("emerald-count");
@@ -337,6 +344,8 @@
     const sbAlive = document.getElementById("sb-alive");
     const sbBed = document.getElementById("sb-bed");
     const sbMode = document.getElementById("sb-mode");
+    const sbRule = document.getElementById("sb-rule");
+    const myTeamInfo = document.getElementById("my-team-info");
 
     function updateHearts() {
       heartsContainer.innerHTML = "";
@@ -350,7 +359,49 @@
     }
     updateHearts();
 
-    // --- 通信 ---
+    // --- ★ 頭上HPバー（ビルボード）生成用関数 ★ ---
+    function createHealthBarSprite(name, currentHp, maxHpVal, team) {
+      const cvs = document.createElement("canvas");
+      cvs.width = 256; cvs.height = 64;
+      const ctx = cvs.getContext("2d");
+
+      // 名前
+      ctx.font = "bold 24px 'Courier New', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = team === "red" ? "#ff4444" : (team === "blue" ? "#33aaff" : "#ffffff");
+      ctx.shadowColor = "#000";
+      ctx.shadowBlur = 4;
+      ctx.fillText(name, 128, 26);
+
+      // HPバー枠
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.fillRect(28, 36, 200, 16);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(28, 36, 200, 16);
+
+      // HPバー残量
+      const ratio = Math.max(0, currentHp / maxHpVal);
+      ctx.fillStyle = ratio > 0.5 ? "#2ecc71" : (ratio > 0.25 ? "#f1c40f" : "#e74c3c");
+      ctx.fillRect(30, 38, 196 * ratio, 12);
+
+      const tex = new THREE.CanvasTexture(cvs);
+      const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(2.4, 0.6, 1);
+      sprite.position.y = 2.4;
+      return sprite;
+    }
+
+    function updateHpSprite(group, name, currentHp, maxHpVal, team) {
+      const oldSprite = group.getObjectByName("hpSprite");
+      if (oldSprite) group.remove(oldSprite);
+      const newSprite = createHealthBarSprite(name, currentHp, maxHpVal, team);
+      newSprite.name = "hpSprite";
+      group.add(newSprite);
+    }
+
+    // --- Socket.io 通信 ---
     const socket = io(window.location.origin, {
       transports: ["polling", "websocket"],
       reconnection: true
@@ -379,7 +430,9 @@
       if (!socket.connected) return showToast("サーバーに接続されていません！", "#ff2222");
       const name = document.getElementById("new-room-name").value.trim();
       const mode = document.getElementById("new-room-mode").value;
-      socket.emit("createRoom", { name, mode });
+      const rule = document.getElementById("new-room-rule").value;
+      // 部屋名に対戦ルール情報を保持
+      socket.emit("createRoom", { name: (name || "PvP部屋") + ` [${rule === "team" ? "チーム戦" : "個人戦"}]`, mode: mode });
     });
 
     document.getElementById("btn-leave").addEventListener("click", () => {
@@ -401,12 +454,16 @@
         return;
       }
       rooms.forEach(r => {
+        const isTeam = r.name.includes("チーム戦");
         const card = document.createElement("div");
         card.className = "room-card";
         card.innerHTML = `
           <div>
-            <strong style="font-size: 16px;">${r.name}</strong>
-            <div><span class="mode-tag mode-${r.mode}">${r.mode.toUpperCase()}</span></div>
+            <strong style="font-size: 15px;">${r.name}</strong>
+            <div>
+              <span class="mode-tag mode-${r.mode}">${r.mode.toUpperCase()}</span>
+              <span class="rule-tag">${isTeam ? "👥 チーム戦" : "👤 個人戦"}</span>
+            </div>
             <div style="font-size: 12px; color: #ccc; margin: 4px 0;">参加者: ${r.playerCount}人</div>
           </div>
           <button onclick="joinRoom('${r.id}')">参加する</button>
@@ -419,15 +476,27 @@
 
     socket.on("roomJoined", (data) => {
       currentRoom = data.roomInfo;
+      currentRule = currentRoom.name.includes("チーム戦") ? "team" : "solo";
+      myTeam = currentRule === "team" ? (Object.keys(otherPlayers).length % 2 === 0 ? "red" : "blue") : "solo";
+
       lobbyScreen.style.display = "none";
       document.body.requestPointerLock();
 
       roomInfo.innerText = `[${currentRoom.mode.toUpperCase()}] ${currentRoom.name}`;
       sbMode.innerText = currentRoom.mode.toUpperCase();
+      sbRule.innerText = currentRule === "team" ? "チーム戦" : "個人戦";
       sbBed.innerText = currentRoom.mode === "bedwars" ? "安全" : "なし";
 
+      if (currentRule === "team") {
+        myTeamInfo.innerText = myTeam === "red" ? "🔴 あなたは【赤チーム】です！" : "🔵 あなたは【青チーム】です！";
+        myTeamInfo.style.color = myTeam === "red" ? "#ff4444" : "#33aaff";
+      } else {
+        myTeamInfo.innerText = "⚔️ 個人戦: 全員が敵です！";
+        myTeamInfo.style.color = "#f1c40f";
+      }
+
       initMap(currentRoom.mode, data.blocks);
-      showToast("The Hiveサーバーへようこそ！", "#2ecc71");
+      showToast("部屋に参加しました！", "#2ecc71");
     });
 
     socket.on("playerJoinedRoom", (player) => {
@@ -455,6 +524,11 @@
       if (action.type === "hit" && action.targetId === socket.id) {
         takeDamage(action.damage);
       }
+      if (action.type === "hpSync" && otherPlayers[action.fromId]) {
+        // 他人のHP同期
+        otherPlayers[action.fromId].userData.hp = action.hp;
+        updateHpSprite(otherPlayers[action.fromId], otherPlayers[action.fromId].userData.name, action.hp, 100, otherPlayers[action.fromId].userData.team);
+      }
     });
 
     window.joinRoom = function(roomId) {
@@ -465,17 +539,17 @@
     // --- 3D Scene ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x78a7ff);
-    scene.fog = new THREE.Fog(0x78a7ff, 35, 100);
+    scene.fog = new THREE.Fog(0x78a7ff, 45, 140);
 
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.rotation.order = 'YXZ';
+    camera.rotation.order = 'YXZ'; // 傾き防止
 
     const renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
-    dirLight.position.set(30, 60, 20);
+    dirLight.position.set(40, 80, 30);
     scene.add(dirLight);
     scene.add(new THREE.AmbientLight(0xffffff, 0.45));
 
@@ -535,21 +609,28 @@
       villagerMesh = group;
     }
 
-    // --- ★ ボット作成（橋架けAI搭載） ---
-    function spawnBot(x, y, z, name) {
+    // --- ボット作成（頭上HPバー ＆ チーム対応） ---
+    function spawnBot(x, y, z, name, team = "solo") {
       const group = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), new THREE.MeshLambertMaterial({ color: 0xe74c3c }));
+      const bodyColor = team === "red" ? 0xe74c3c : (team === "blue" ? 0x2980b9 : 0x8e44ad);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), new THREE.MeshLambertMaterial({ color: bodyColor }));
       body.position.y = 0.9;
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshLambertMaterial({ color: 0xf1c40f }));
       head.position.y = 1.55;
       group.add(body); group.add(head);
       group.position.set(x, y, z);
+
+      // ★頭上HPバーを付与
+      updateHpSprite(group, name, 100, 100, team);
+
       scene.add(group);
 
       bots.push({
         mesh: group,
         hp: 100,
+        maxHp: 100,
         name: name,
+        team: team,
         velY: 0,
         attackCooldown: 0
       });
@@ -557,11 +638,18 @@
     }
 
     document.getElementById("btn-add-bots").addEventListener("click", () => {
-      spawnBot(0, 11, 0, "Hive_Alex");
-      spawnBot(-14, 11, 0, "Hive_Zombie");
-      showToast("🤖 ボットを補充！橋を架けて攻めてきます！", "#e67e22");
+      if (currentRule === "team") {
+        spawnBot(0, 11, 0, "Bot_Red", "red");
+        spawnBot(-20, 11, 0, "Bot_Blue", "blue");
+        showToast("🤖 赤・青チームのボットを補充しました！", "#e67e22");
+      } else {
+        spawnBot(0, 11, 0, "Bot_Alex", "solo");
+        spawnBot(-20, 11, 0, "Bot_Zombie", "solo");
+        showToast("🤖 個人戦ボットを補充しました！", "#e67e22");
+      }
     });
 
+    // --- ★ 超巨大浮島生成（厚みと深みのある本格仕様） ---
     function createIsland(cx, cy, cz, radius) {
       for (let x = -radius; x <= radius; x++) {
         for (let z = -radius; z <= radius; z++) {
@@ -587,40 +675,66 @@
       }
     }
 
+    // --- ★ マップ初期化（フラットワールド対応 ＆ 巨大浮島） ---
     function initMap(mode, existingBlocks) {
       cleanupGameWorld();
 
       if (mode === "skywars") {
-        createIsland(0, 10, 0, 5); // 中央島
-        spawnVillager(0, 11, -2);
-        addBlockMesh(0, 11, 2, "chest"); // 中央チェスト
-        addBlockMesh(0, 11, 0, "spawner"); // 中央エメラルドスポナー
+        // 中央島（超巨大：半径11）
+        createIsland(0, 10, 0, 11);
+        spawnVillager(0, 11, -4);
+        addBlockMesh(0, 11, 3, "chest");
+        addBlockMesh(0, 11, 0, "spawner");
 
-        createIsland(14, 10, 0, 3);
-        createIsland(-14, 10, 0, 3);
-        createIsland(0, 10, 14, 3);
-        createIsland(0, 10, -14, 3);
+        // プレイヤー島（超巨大：半径7、しっかり拠点構築可能）
+        createIsland(28, 10, 0, 7);
+        createIsland(-28, 10, 0, 7);
+        createIsland(0, 10, 28, 7);
+        createIsland(0, 10, -28, 7);
 
-        addBlockMesh(14, 11, 0, "spawner"); // 自陣スポナー
+        // 飛び石足場（3x3のしっかりした中継島）
+        createIsland(17, 10, 0, 2);
+        createIsland(-17, 10, 0, 2);
+        createIsland(0, 10, 17, 2);
+        createIsland(0, 10, -17, 2);
 
-        spawnPoint.set(14, 13, 0);
+        spawnPoint.set(28, 13, 0);
         camera.position.copy(spawnPoint);
+
       } else if (mode === "bedwars") {
-        createIsland(-13, 10, 0, 4); // 赤島
-        createIsland(13, 10, 0, 4);  // 青島
-        createIsland(0, 10, 0, 4);   // 中央島
-        spawnVillager(-12, 11, 2);
+        // 赤島・青島（要塞拠点：半径8）
+        createIsland(-26, 10, 0, 8); // 赤
+        createIsland(26, 10, 0, 8);  // 青
+        createIsland(0, 10, 0, 9);   // 中央巨大島
+
+        spawnVillager(-24, 11, 3);
+        spawnVillager(24, 11, 3);
+
+        // 中継島
+        createIsland(-15, 10, 0, 2);
+        createIsland(15, 10, 0, 2);
 
         addBlockMesh(0, 11, 0, "spawner");
-        addBlockMesh(-13, 11, 0, "bed");
-        addBlockMesh(13, 11, 0, "bed");
+        addBlockMesh(-26, 11, 0, "bed"); // 赤ベッド
+        addBlockMesh(26, 11, 0, "bed");  // 青ベッド
 
-        spawnPoint.set(-13, 13, 0);
+        spawnPoint.set(myTeam === "blue" ? 26 : -26, 13, 0);
         camera.position.copy(spawnPoint);
+
       } else {
-        createIsland(0, 5, 0, 8);
-        spawnVillager(0, 6, -2);
-        spawnPoint.set(0, 8, 4);
+        // ★★★ 自由なマップ＝超広大なフラットワールド（平坦な草原） ★★★
+        const size = 30; // 60x60ブロックの平坦な大地
+        for (let x = -size; x <= size; x++) {
+          for (let z = -size; z <= size; z++) {
+            addBlockMesh(x, 4, z, "grass");
+            addBlockMesh(x, 3, z, "dirt");
+            addBlockMesh(x, 2, z, "dirt");
+            addBlockMesh(x, 1, z, "stone");
+            addBlockMesh(x, 0, z, "bedrock"); // 最下層は岩盤！
+          }
+        }
+        spawnVillager(0, 5, -3);
+        spawnPoint.set(0, 7, 0);
         camera.position.copy(spawnPoint);
       }
 
@@ -642,14 +756,22 @@
       Object.keys(otherPlayers).length = 0;
     }
 
+    // 他プレイヤー描画（頭上HPバー＆チームカラー）
     function addOtherPlayer(p) {
       const group = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), new THREE.MeshLambertMaterial({ color: 0x00aaaa }));
+      const pTeam = currentRule === "team" ? (Object.keys(otherPlayers).length % 2 === 0 ? "blue" : "red") : "solo";
+      const shirtColor = pTeam === "red" ? 0xe74c3c : (pTeam === "blue" ? 0x2980b9 : 0x00aaaa);
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), new THREE.MeshLambertMaterial({ color: shirtColor }));
       body.position.y = 0.9;
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshLambertMaterial({ color: 0xc68642 }));
       head.position.y = 1.55;
       group.add(body); group.add(head);
       group.position.set(p.x, p.y, p.z);
+
+      group.userData = { id: p.id, name: p.name, hp: 100, team: pTeam };
+      updateHpSprite(group, p.name, 100, 100, pTeam);
+
       scene.add(group);
       otherPlayers[p.id] = group;
     }
@@ -735,7 +857,7 @@
       }
     };
 
-    // --- ★ The Hive風：高速前方自動ブリッジ＆クリック処理 ---
+    // --- クリック攻撃（チーム判定＆頭上HP更新つき） ---
     window.addEventListener("mousedown", (e) => {
       if (!isLocked) return;
       isSwinging = true;
@@ -744,15 +866,22 @@
       raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
       if (e.button === 0) {
-        // 攻撃
         if (selectedSlot === 1) {
+          // ボット攻撃
           for (let i = bots.length - 1; i >= 0; i--) {
             const b = bots[i];
+            // チーム戦で同チームの場合は攻撃無効（フレンドリーファイア防止）
+            if (currentRule === "team" && b.team === myTeam) continue;
+
             const hits = raycaster.intersectObjects(b.mesh.children);
-            if (hits.length > 0 && hits[0].distance < 4.0) {
+            if (hits.length > 0 && hits[0].distance < 4.5) {
               b.hp -= swordDamage;
-              b.mesh.position.x += Math.sin(yaw) * 2;
-              b.mesh.position.z -= Math.cos(yaw) * 2;
+              b.mesh.position.x += Math.sin(yaw) * 1.5;
+              b.mesh.position.z -= Math.cos(yaw) * 1.5;
+
+              // 頭上HPバー更新
+              updateHpSprite(b.mesh, b.name, b.hp, b.maxHp, b.team);
+
               if (b.hp <= 0) {
                 scene.remove(b.mesh);
                 bots.splice(i, 1);
@@ -765,16 +894,20 @@
             }
           }
 
+          // 他プレイヤー攻撃
           for (const id in otherPlayers) {
-            const hits = raycaster.intersectObjects(otherPlayers[id].children);
-            if (hits.length > 0 && hits[0].distance < 4.0) {
+            const p = otherPlayers[id];
+            if (currentRule === "team" && p.userData.team === myTeam) continue; // 味方は殴れない
+
+            const hits = raycaster.intersectObjects(p.children);
+            if (hits.length > 0 && hits[0].distance < 4.5) {
               socket.emit("action", { type: "hit", targetId: id, damage: swordDamage });
               return;
             }
           }
         }
 
-        // 採掘 ＆ チェスト開封
+        // 採掘 ＆ チェスト
         const hits = raycaster.intersectObjects(Object.values(worldBlocks));
         if (hits.length > 0 && hits[0].distance < 5.5) {
           const target = hits[0].object.userData;
@@ -782,7 +915,7 @@
             swordDamage = 50;
             swordMesh.material.color.setHex(0x33eeff);
             document.getElementById("weapon-name").innerText = "ダイヤの剣";
-            emeralds += 3;
+            emeralds += 4;
             emeraldCountText.innerText = `🟢 ${emeralds}`;
             showToast("🎁 中央チェストを開封！ダイヤ剣とエメラルドGET！", "#f39c12");
             removeBlockMesh(target.x, target.y, target.z);
@@ -795,7 +928,7 @@
         }
       }
 
-      // 右クリック（ブロック設置 ＆ 村人会話 ＆ ★The Hive前方自動ブリッジ★）
+      // 右クリック（ブロック設置 ＆ 自動ブリッジ）
       if (e.button === 2) {
         if (villagerMesh) {
           const vHits = raycaster.intersectObjects(villagerMesh.children);
@@ -811,7 +944,6 @@
           const type = types[selectedSlot] || "stone";
 
           if (hits.length > 0 && hits[0].distance < 5.5) {
-            // 通常の面設置
             const hit = hits[0];
             const pos = hit.object.userData;
             const normal = hit.face.normal;
@@ -821,7 +953,7 @@
             addBlockMesh(nx, ny, nz, type);
             socket.emit("placeBlock", { x: nx, y: ny, z: nz, color: type });
           } else {
-            // ★★★ The Hive式 前方自動ブリッジ（空中にブロックを前進設置） ★★★
+            // The Hive式 前方自動ブリッジ
             const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
             const placeX = Math.floor(camera.position.x + forward.x * 1.5);
             const placeY = Math.floor(camera.position.y - 1.6);
@@ -844,6 +976,11 @@
       updateHearts();
       velocityY = 4.5;
 
+      // サーバーへ自分の最新HPを送信（他プレイヤーの頭上HPバー用）
+      if (socket.connected) {
+        socket.emit("action", { type: "hpSync", hp: hp });
+      }
+
       document.body.style.backgroundColor = "rgba(255,0,0,0.35)";
       setTimeout(() => document.body.style.backgroundColor = "#111", 100);
 
@@ -858,7 +995,7 @@
 
     function checkGroundedAt(x, y, z) {
       const checkY = Math.floor(y - 1.6);
-      const offsets = [[0.2, 0.2], [-0.2, 0.2], [0.2, -0.2], [-0.2, -0.2], [0, 0]];
+      const offsets = [[0.25, 0.25], [-0.25, 0.25], [0.25, -0.25], [-0.25, -0.25], [0, 0]];
       for (const [ox, oz] of offsets) {
         const bx = Math.floor(x + ox);
         const bz = Math.floor(z + oz);
@@ -867,10 +1004,9 @@
       return null;
     }
 
-    // スポナーの定期資源生成（3秒ごと）
     let spawnerTimer = 0;
-
     let prevTime = performance.now();
+
     function animate() {
       requestAnimationFrame(animate);
       const time = performance.now();
@@ -900,7 +1036,6 @@
       }
 
       if (isLocked && currentRoom) {
-        // スポナーの資源生成
         spawnerTimer += delta;
         if (spawnerTimer >= 3.5) {
           spawnerTimer = 0;
@@ -927,6 +1062,7 @@
         let nextX = camera.position.x + deltaX;
         let nextZ = camera.position.z + deltaZ;
 
+        // Shiftスニーク
         if (isSneaking && checkGroundedAt(camera.position.x, camera.position.y, camera.position.z) !== null) {
           if (checkGroundedAt(nextX, camera.position.y, camera.position.z) === null) nextX = camera.position.x;
           if (checkGroundedAt(camera.position.x, camera.position.y, nextZ) === null) nextZ = camera.position.z;
@@ -945,25 +1081,29 @@
           if (keys["Space"]) velocityY = 8.0;
         }
 
+        // 奈落死判定
         if (camera.position.y < -15) takeDamage(100);
 
-        // ★★★ ボットAI：橋を架けながらプレイヤーに向かって進む！ ★★★
+        // ボットの橋架け移動 ＆ 攻撃
         bots.forEach((b, idx) => {
           b.attackCooldown -= delta;
+
+          // チーム戦で仲間ならプレイヤーを襲わない
+          if (currentRule === "team" && b.team === myTeam) return;
+
           const toPlayer = new THREE.Vector3().subVectors(camera.position, b.mesh.position);
           toPlayer.y = 0;
           const dist = toPlayer.length();
 
-          if (dist > 1.8 && dist < 30) {
+          if (dist > 1.8 && dist < 35) {
             toPlayer.normalize();
             const step = toPlayer.clone().multiplyScalar(3.2 * delta);
             const targetPos = b.mesh.position.clone().add(step);
 
-            // ボットの進行方向の足元ブロックを確認
             const botGroundCheckY = Math.floor(targetPos.y - 0.2);
             const checkKey = `${Math.floor(targetPos.x)},${botGroundCheckY},${Math.floor(targetPos.z)}`;
 
-            // ★足元にブロックがない場合、ボット自ら石ブロックを置いて橋を架ける！
+            // 足場がなければ石ブロックを置いて橋を作る
             if (!worldBlocks[checkKey]) {
               const bx = Math.floor(targetPos.x);
               const bz = Math.floor(targetPos.z);
@@ -977,7 +1117,7 @@
             b.attackCooldown = 1.2;
           }
 
-          // ボットの重力＆奈落落下死
+          // ボットの重力＆奈落死
           const botGround = checkGroundedAt(b.mesh.position.x, b.mesh.position.y + 1.0, b.mesh.position.z);
           if (botGround === null) {
             b.velY -= 20 * delta;
